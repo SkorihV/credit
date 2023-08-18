@@ -51,6 +51,8 @@ onMounted(() => {
     auto-apply
     :min-date="new Date()"
     :format="format"
+    :enable-seconds="false"
+    :enable-time-picker="false"
   />
   {{localDateTime}}
 </template>
