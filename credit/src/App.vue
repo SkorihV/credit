@@ -1,5 +1,8 @@
 <script setup>
 import {ref, computed, reactive, watch} from 'vue'
+import UiInput from "@/components/UiInput.vue";
+
+const test = ref(0)
 
 const startCreditSum = ref(2000000) // сумма кредита
 const firstPayment = ref(500000) // первоначальный взнос
@@ -118,7 +121,7 @@ const totalSumCredit = computed(() => {
  * @type {ComputedRef<*>}
  */
 const overpaymentAmount = computed(() => {
-  return aroundCeil(totalSumCredit.value - computedStartCreditSum.value, 100);
+  return aroundCeil(totalData.pay - totalData.mainDebt, 100);
 })
 
 const localDateTime = computed(() => {
@@ -301,6 +304,19 @@ function aroundNumber(value, aroundNum) {
 }
 
 
+function changeSum (value) {
+  startCreditSum.value = value
+}
+function changeFirstPayment (value) {
+  firstPayment.value = value
+}
+function changeTimeCredit (value) {
+  timeCredit.value = value
+}
+function changeInterestRate (value) {
+  timeCredit.value = value
+}
+
 
 </script>
 
@@ -310,32 +326,53 @@ function aroundNumber(value, aroundNum) {
       <pre>
         Сумма кредита: {{computedStartCreditSum}}
         Ежемесячный платеж (аннуитет): {{monthlyPayment}}
-        Переплата по кредиту: {{totalData.pay - totalData.mainDebt}}
+        Переплата по кредиту: {{overpaymentAmount}}
         Общая выплата: {{totalData.pay}}
         {{localDateTime}}
       </pre>
 
+    <div class="credit__data-wrapper">
+      <UiInput
+        label="Сумма кредита:"
+        unit="руб"
+        :controls="true"
+        data-type="onlyInteger"
+        :input-value="startCreditSum"
+        :max="100000000"
+        min="100"
+        step="50"
+        :discrete-step="false"
+        @changed-value="changeSum"
+      />
+    </div>
 
     <div class="credit__data-wrapper">
-      <div class="credit__input-label-text">Сумма кредита:</div>
-      <div class="credit__data-value">
-        <input class="credit__input-item" type="number" v-model.number.trim="startCreditSum">
-      </div>
-      <div class="credit__unit">руб</div>
-    </div>
-    <div class="credit__data-wrapper">
-      <div class="credit__input-label-text">Первоначальный взнос кредита:</div>
-      <div class="credit__data-value">
-        <input class="credit__input-item" type="number" v-model.number.trim="firstPayment">
-      </div>
-      <div class="credit__unit">руб</div>
+      <UiInput
+        label="Первоначальный взнос кредита:"
+        unit="руб"
+        :controls="true"
+        data-type="onlyInteger"
+        :input-value="firstPayment"
+        :max="100000000"
+        min="100"
+        step="100"
+        :discrete-step="true"
+        @changed-value="changeFirstPayment"
+      />
     </div>
 
     <div class="credit__data-wrapper">
-      <div class="credit__input-label-text">Срок кредита:</div>
-      <div class="credit__data-value">
-        <input class="credit__input-item" type="number" v-model.number.trim="timeCredit">
-      </div>
+      <UiInput
+        label="Срок кредита:"
+        :controls="true"
+        data-type="onlyInteger"
+        :input-value="timeCredit"
+        :max="20"
+        :min="1"
+        :step="2"
+        :discrete-step="true"
+        @changed-value="changeTimeCredit"
+      />
       <select v-model="currentTypeTime">
         <option value="month">мес</option>
         <option value="year">год</option>
@@ -343,11 +380,18 @@ function aroundNumber(value, aroundNum) {
     </div>
 
     <div class="credit__data-wrapper">
-      <div class="credit__input-label-text">Процентная ставка:</div>
-      <div class="credit__data-value">
-        <input class="credit__input-item" type="number" v-model.number.trim="interestRate">
-      </div>
-      <div class="credit__unit">% годовых</div>
+      <UiInput
+        label="Процентная ставка:"
+        :controls="true"
+        data-type="onlyNumber"
+        :input-value="interestRate"
+        :max="50"
+        :min="0"
+        :step="0.5"
+        :discrete-step="false"
+        unit="% годовых"
+        @changed-value="changeInterestRate"
+      />
     </div>
 
     <div class="credit__data-wrapper">
@@ -804,9 +848,139 @@ $c_element_range_color: #cccccc;
   &__table tr td:last-child, &__table tr th:last-child {
     border-right: none;
   }
-
-
-
-
 }
+
+
+.calc {
+  &__wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    &-group-data {
+      display: flex;
+      width: 100%;
+      padding-bottom: 10px;
+      position: relative;
+      flex-direction: column;
+      &.is-highlight {
+        border: 2px dashed blue;
+        background: repeating-linear-gradient(
+            -60deg,
+            blue 0,
+            blue 1px,
+            transparent 1px,
+            transparent 15px
+        );
+        background-color: #fff;
+      }
+      &.indent {
+        padding-left: 10px;
+        padding-right: 10px;
+      }
+    }
+  }
+
+  &__input {
+    &-wrapper {
+      @include style-element-main-wrapper;
+      &.is-stretch {
+        flex: 1 1 100%;
+      }
+      &-data {
+        display: flex;
+        align-items: center;
+        position: relative;
+        gap: 2px;
+        flex: 1 1 100%;
+        &.stretch {
+          width: 100%;
+        }
+      }
+      &.column {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+
+    &-label {
+      &-text {
+        @include style-title-main;
+        align-items: flex-start;
+        display: flex;
+        gap: 5px;
+      }
+    }
+
+    &-item {
+      font-size: 16px;
+      line-height: 20px;
+      padding: 20px 35px;
+      max-width: 304px;
+      background: $c_element_input_color;
+      color: $c_element_text_default;
+      border: $c_element_border-width solid $c_element_border_color;
+      text-align: center;
+      border-radius: $c_element_border_radius;
+      @media all and (max-width: 480px) {
+        padding: 10px 15px;
+      }
+      &:focus,
+      &:hover {
+        outline: none;
+        border-color: $c_element_border_color_hover;
+        background: $c_element_bg_color_hover;
+        color: $c_element_text_hover;
+      }
+      &.number {
+        max-width: 150px;
+        padding: 20px 15px;
+        @media all and (max-width: 480px) {
+          padding: 10px 15px;
+        }
+      }
+      &.stretch {
+        width: 100%;
+        max-width: none;
+      }
+
+      &.error {
+        outline-color: $c_base_error_color;
+        border-color: $c_base_error_color;
+      }
+    }
+    &-buttons {
+      &-plus,
+      &-minus {
+        width: 26px;
+        height: 26px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: $c_base_title;
+        font-size: 28px;
+        line-height: 26px;
+        font-weight: 600;
+        -moz-user-select: none;
+        -webkit-user-select: none;
+        user-select: none;
+        &:hover {
+          cursor: pointer;
+        }
+        &.disabled {
+          opacity: 0.6;
+          &:hover {
+            cursor: not-allowed;
+          }
+        }
+      }
+    }
+    &-unit {
+      margin-left: 5px;
+      font-size: 17px;
+      line-height: 20px;
+      color: $c_element_text_default;
+    }
+  }
+}
+
 </style>
