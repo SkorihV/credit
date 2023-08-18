@@ -1,11 +1,19 @@
 <script setup>
+
+//https://mortgage-calculator.ru/%D1%84%D0%BE%D1%80%D0%BC%D1%83%D0%BB%D0%B0-%D1%80%D0%B0%D1%81%D1%87%D0%B5%D1%82%D0%B0-%D0%B8%D0%BF%D0%BE%D1%82%D0%B5%D0%BA%D0%B8/
+//https://www.calc.ru/kreditnyi-kalkulyator.html
+//https://calcus.ru/kalkulyator-ipoteki
+
+
 import {ref, computed, reactive, watch} from 'vue'
 import UiInput from "@/components/UiInput.vue";
 import UiRadio from "@/components/UiRadio.vue";
 import UiSelect from "@/components/UiSelect.vue";
 import UiTableData from "@/components/UiTableData.vue";
 
-const test = ref(0)
+import '@vuepic/vue-datepicker/dist/main.css'
+import UiDatePicker from "@/components/UiDatePicker.vue";
+
 
 const startCreditSum = ref(2000000) // сумма кредита
 const firstPayment = ref(500000) // первоначальный взнос
@@ -434,11 +442,15 @@ function changeTypeTime (value) {
     </div>
 
     <div class="credit__data-wrapper">
-      <div class="credit__input-label-text">Дата первого платежа:</div>
-      <div class="credit__data-value">
-        <input type="date" v-model.trim="dateTime">
-      </div>
-      <div class="credit__unit"></div>
+      <UiDatePicker
+        :date-time="localDateTime"
+        label="Дата первого платежа:"
+      />
+
+<!--      <div class="credit__data-value">-->
+<!--        <input type="date" v-model.trim="dateTime">-->
+<!--      </div>-->
+<!--      <div class="credit__unit"></div>-->
     </div>
 
     <UiTableData
