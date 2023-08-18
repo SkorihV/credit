@@ -1,13 +1,15 @@
 <script setup>
 import {ref, computed, reactive, watch} from 'vue'
 import UiInput from "@/components/UiInput.vue";
+import UiRadio from "@/components/UiRadio.vue";
+import UiSelect from "@/components/UiSelect.vue";
 
 const test = ref(0)
 
 const startCreditSum = ref(2000000) // сумма кредита
 const firstPayment = ref(500000) // первоначальный взнос
 const timeCredit = ref(20) // срок кредита в месяцах
-const currentTypeTime = ref('year') // тип времени
+const typeTime = ref('year') // тип времени
 const interestRate = ref(9.6) //процентная ставка
 const typeCredit = ref('A')  // тип расчета кредита
 const dateTime = ref('') // дата первого платежа
@@ -45,6 +47,28 @@ const totalData = reactive({
 
 })
 
+const radioDataTypeCredit = [
+  {
+    radioLabel: "аннуитетный",
+    radioValue: "A"
+  },
+  {
+    radioLabel: "дифференцированный",
+    radioValue: "D"
+  }
+]
+
+const selectDataTypeTime = [
+  {
+    selectLabel: "Год",
+    selectValue: "year"
+  },
+  {
+    selectLabel: "Месяц",
+    selectValue: "month"
+  }
+]
+
 
 
 /**
@@ -53,7 +77,7 @@ const totalData = reactive({
  * @type {ComputedRef<number>}
  */
 const amountMonth = computed(() => {
-    if (currentTypeTime.value === "year") {
+    if (typeTime.value === "year") {
       return timeCredit.value * 12;
     }
     return timeCredit.value;
@@ -316,6 +340,12 @@ function changeTimeCredit (value) {
 function changeInterestRate (value) {
   timeCredit.value = value
 }
+function changeTypeCredit (value) {
+  typeCredit.value = value
+}
+function changeTypeTime (value) {
+  typeTime.value = value
+}
 
 
 </script>
@@ -373,10 +403,10 @@ function changeInterestRate (value) {
         :discrete-step="true"
         @changed-value="changeTimeCredit"
       />
-      <select v-model="currentTypeTime">
-        <option value="month">мес</option>
-        <option value="year">год</option>
-      </select>
+      <UiSelect
+        :select-data="selectDataTypeTime"
+        @changed-value="changeTypeTime"
+      />
     </div>
 
     <div class="credit__data-wrapper">
@@ -395,13 +425,11 @@ function changeInterestRate (value) {
     </div>
 
     <div class="credit__data-wrapper">
-      <div class="credit__input-label-text">Тип платежей:</div>
-      <div class="credit__data-value">
-        <input type="radio" id="annuity" value="A" v-model.trim="typeCredit">
-        <label for="annuity">аннуитетный</label>
-        <input type="radio" id="differentiated" value="D" v-model.trim="typeCredit">
-        <label for="differentiated">дифференцированный </label>
-      </div>
+      <UiRadio
+        label="Тип платежей:"
+        :radioData="radioDataTypeCredit"
+        @changed-value="changeTypeCredit"
+      />
     </div>
 
     <div class="credit__data-wrapper">
@@ -979,6 +1007,336 @@ $c_element_range_color: #cccccc;
       font-size: 17px;
       line-height: 20px;
       color: $c_element_text_default;
+    }
+  }
+
+  &__radio {
+    &-wrapper {
+      @include style-element-main-wrapper;
+      &-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        flex: 1 1 100%;
+        width: 100%;
+      }
+      &.column {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      &.base {
+        .calc__radio-indicator {
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          border: 1px solid $c_element_text_default;
+          position: relative;
+
+          &:after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            width: 10px;
+            height: 10px;
+          }
+        }
+      }
+    }
+    &-label-text {
+      @include style-title-main;
+      align-items: flex-start;
+      display: flex;
+      gap: 5px;
+    }
+    &-label-button {
+      display: flex;
+      position: relative;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 30px;
+      background-color: $c_element_bg_color;
+      border-radius: $c_element_border_radius;
+      border: $c_element_border_width solid $c_element_border_color;
+      cursor: pointer;
+      @include transition;
+      gap: 8px;
+      text-align: start;
+      &.stretch {
+        flex: 1 1 auto;
+      }
+      .calc__icon-element-label-wrapper {
+        //flex: none;
+      }
+      @media all and (max-width: 480px) {
+        padding: 11px 15px;
+      }
+      @media all and (max-width: 360px) {
+        flex: 1 1 100%;
+      }
+      &.onlyImage {
+        padding: 10px;
+      }
+      &.isShowPrompt {
+        padding-right: 35px;
+      }
+      .calc__prompt-wrapper {
+        @include style-prompt-absolute-shift;
+      }
+      &:hover {
+        background-color: $c_element_bg_color_hover;
+        border-color: $c_element_border_color_hover;
+        .calc__radio-name,
+        .calc__radio-subname {
+          color: $c_element_text_hover;
+        }
+        .calc__radio-indicator {
+          border-color: $c_element_text_hover;
+          &:after {
+            background-color: $c_element_text_hover;
+          }
+        }
+      }
+      &.checked {
+        background-color: $c_element_bg_color_selected;
+        border-color: $c_element_border_color_selected;
+        .calc__radio-name,
+        .calc__radio-subname {
+          color: $c_element_text_selected;
+        }
+        .calc__radio-indicator {
+          border-color: $c_element_text_selected;
+          &:after {
+            background-color: $c_element_text_selected;
+          }
+        }
+      }
+      &.error {
+        border-color: $c_base_error_color;
+        .calc__radio-text {
+          color: $c_base_error_color;
+        }
+        .calc__radio-indicator {
+          border-color: $c_base_error_color;
+          &:after {
+            background-color: $c_base_error_color;
+          }
+        }
+      }
+    }
+    &-text {
+      display: flex;
+      align-items: flex-start;
+      flex-direction: column;
+
+      &-wrapper {
+        display: flex;
+        gap: 5px;
+        align-items: center;
+      }
+    }
+    &-name {
+      font-size: 16px;
+      line-height: 20px;
+      color: $c_element_text_default;
+    }
+    &-subname {
+      @include style-label-sub;
+      color: $c_element_text_default;
+    }
+  }
+
+  &__select {
+    &-wrapper {
+      @include style-element-main-wrapper;
+      &.column {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      &.open {
+        .calc__select-arrow {
+          border-color: $c_element_text_default;
+          transform: rotate(-135deg);
+          -webkit-transform: rotate(-135deg);
+        }
+        .calc__select-change-item {
+          border-color: $c_element_border_color;
+          border-bottom-left-radius: 0;
+          border-bottom-right-radius: 0;
+        }
+        .calc__select-option-wrapper {
+          border-color: $c_element_border_color;
+        }
+      }
+      @media all and (max-width: 480px) {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      &-right-side {
+        display: flex;
+        flex: 1 1 100%;
+        width: 100%;
+      }
+    }
+    &-label {
+      &-text {
+        @include style-title-main;
+        align-items: flex-start;
+        display: flex;
+        gap: 5px;
+      }
+    }
+    &-change {
+      &-wrapper {
+        cursor: pointer;
+        font-size: 15px;
+        line-height: 16px;
+        position: relative;
+        //flex: 1 1 100%;
+        min-width: 200px;
+        @media all and (max-width: 480px) {
+          width: 100%;
+        }
+        &.error {
+          .calc__select-change-item {
+            border-color: $c_base_error_color;
+            color: $c_base_error_color;
+          }
+          .calc__select-arrow {
+            border-color: $c_base_error_color;
+          }
+          .calc__select-option-wrapper {
+            border-color: $c_base_error_color;
+          }
+        }
+        &.stretch {
+          width: 100%;
+        }
+      }
+      &-item {
+        color: $c_element_text_default;
+        border-radius: $c_element_border_radius;
+        border: $c_element_border_width solid $c_element_border_color;
+        background-color: $c_element_bg_color;
+        padding: 20px 50px 20px 40px;
+        font-weight: 400;
+        font-size: 16px;
+        line-height: 20px;
+        gap: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        text-align: start;
+        position: relative;
+        @media all and (max-width: 360px) {
+          padding: 10px 50px 10px 10px;
+        }
+        &:hover {
+          border-color: $c_element_border_color_hover;
+          background-color: $c_element_bg_color_hover;
+          color: $c_element_text_hover;
+          .calc__select-arrow {
+            border-color: $c_element_text_hover;
+          }
+        }
+        .calc__select-arrow {
+          width: 10px;
+          height: 10px;
+          border: solid $c_element_text_default;
+          border-width: 0 $c_element_border_width $c_element_border_width 0;
+          display: inline-block;
+          margin-left: auto;
+          flex: 0 0 auto;
+          transform: rotate(45deg);
+          -webkit-transform: rotate(45deg);
+          position: absolute;
+          right: 30px;
+        }
+
+        .calc__prompt-wrapper {
+          @include style-prompt-absolute-shift;
+        }
+      }
+    }
+    &-option {
+      &-wrapper {
+        display: flex;
+        flex-direction: column;
+        position: absolute;
+        border-bottom-left-radius: $c_element_border-radius;
+        border-bottom-right-radius: $c_element_border-radius;
+        z-index: 99;
+        left: 50%;
+        overflow: hidden;
+        transform: translateX(-50%);
+        border-left: $c_element_border_width solid
+        $c_element_border_color_selected;
+        border-right: $c_element_border_width solid
+        $c_element_border_color_selected;
+        border-bottom: $c_element_border_width solid
+        $c_element_border_color_selected;
+        .calc__select-image-wrapper {
+          margin: 5px;
+        }
+        &:hover {
+        }
+        &.stretch {
+          width: 100%;
+        }
+      }
+      &-list {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        overflow: auto;
+        max-height: 300px;
+      }
+      &-search {
+        font-size: 16px;
+        line-height: 20px;
+        padding: 10px 50px 10px 40px;
+        background: $c_element_bg_color;
+        color: $c_element_text_default;
+        border: $c_element_border_width solid $c_element_border_color;
+        width: 100%;
+        border-radius: $c_element_border_radius;
+        &:focus,
+        &:hover {
+          outline: none;
+          border-color: $c_element_border_color_hover;
+          background: $c_element_bg_color_hover;
+          color: $c_element_text_hover;
+        }
+      }
+      &-item {
+        background-color: $c_element_bg_color;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        text-align: start;
+        padding: 10px 50px 10px 40px;
+        cursor: pointer;
+        width: 100%;
+        position: relative;
+        &-text {
+          font-weight: 400;
+          font-size: 16px;
+          line-height: 20px;
+          text-align: start;
+          color: $c_element_text_default;
+        }
+        &:hover {
+          background-color: $c_element_bg_color_hover;
+          .calc__select-option-item-text {
+            color: $c_element_text_hover;
+          }
+        }
+        .calc__prompt-wrapper {
+          @include style-prompt-absolute-shift;
+        }
+      }
     }
   }
 }
