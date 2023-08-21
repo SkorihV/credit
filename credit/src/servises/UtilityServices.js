@@ -1,4 +1,10 @@
-
+/**
+ *
+ * @param value
+ * @param exp
+ * @param type
+ * @returns {*|number|null}
+ */
 const decimalAdjust = function (value, exp = 0, type = "round") {
   if (typeof exp === "undefined" || +exp === 0) {
     try {
@@ -31,9 +37,25 @@ const checkedValueOnVoid = (value) => {
   return value?.length !== 0 && value !== undefined && value !== null;
 };
 
+/**
+ *
+ * @param originalNumber
+ * @param multiple
+ * @returns {*}
+ */
+function makeMultiple(originalNumber, multiple) {
+  if (multiple === 0) {
+    throw new Error("Multiple cannot be zero");
+  }
+
+  const remainder = originalNumber % multiple;
+  return originalNumber - remainder + multiple;
+}
+
 
 
 export {
   decimalAdjust,
   checkedValueOnVoid,
+  makeMultiple
 };

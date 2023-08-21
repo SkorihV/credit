@@ -57,10 +57,7 @@ function changeValue(eventType = "click") {
 
 <template>
   <div class="calc__wrapper-group-data">
-    <div
-      class="calc__radio-wrapper"
-    >
-      <div class="calc__radio-label-text" v-if="isExistLabel">
+      <div class="credit__label-text" v-if="isExistLabel">
         {{ label }}
       </div>
       <div class="calc__radio-wrapper-buttons" v-if="isExistData">
@@ -83,7 +80,6 @@ function changeValue(eventType = "click") {
           </div>
         </template>
       </div>
-    </div>
   </div>
 
 </template>

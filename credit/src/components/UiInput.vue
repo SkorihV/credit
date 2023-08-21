@@ -105,15 +105,18 @@ const isExistLabel = computed(() => {
   return Boolean(props.label?.toString()?.length);
 });
 
-const onlyNumberValue = computed(() => {
-  return props.dataType === "onlyNumber";
-});
+// const onlyNumberValue = computed(() => {
+//   return props.dataType === "onlyNumber";
+// });
 
 const onlyIntegerValue = computed(() => {
   return props.dataType === "onlyInteger";
 });
 
 const localMax = computed(() => {
+  if (props.min > props.max && checkedValueOnVoid(props.min) ) {
+    return props.min
+  }
   return checkedValueOnVoid(props.max)
     ? Number(props.max)
     : null;
@@ -238,13 +241,6 @@ watch(localInputBufferValue, (newValue) => {
   localInputValue.value = parseFloat(
     newValue?.toString().replaceAll(/\s/g, "").replaceAll(/,/g, ".")
   );
-  clearTimeout(focusTimerName.value);
-  focusTimerName.value = setTimeout(() => {
-    if (inputFocus.value) {
-      setTimeout(() => (inputFocus.value = true), 1000);
-    }
-    inputFocus.value = false;
-  }, 3000);
 });
 
 function resultWitchNumberValid() {
@@ -305,14 +301,14 @@ function resultWitchNumberValid() {
     console.error(e.message);
   }
 }
-function changeValue(eventType = "input") {
+function changeValue() {
   emits('changedValue', resultValue.value)
 }
 
 function changeValueWitchTimer(value) {
   nameTimer.value = setTimeout(() => {
     localInputValue.value = value;
-    changeValue("timer");
+    changeValue();
   }, 2000);
 }
 
@@ -369,24 +365,37 @@ function resetNumberValue() {
 
 
 function addLocalInputBufferValue(value) {
-  localInputBufferValue.value = value.toLocaleString("ru-RU", {
-    useGrouping: true,
-    maximumFractionDigits: 5,
-  });
+    localInputBufferValue.value = value.toLocaleString("ru-RU", {
+      useGrouping: true,
+      maximumFractionDigits: 5,
+    });
 }
 
-onMounted(() => {
+
+function updatedLocalInputValue() {
   if (localMin.value > Number(props.inputValue)) {
     localInputValue.value = localMin.value;
-    changeValue("mounted");
+    changeValue();
   } else if (localMax.value < Number(props.inputValue)) {
     localInputValue.value = localMax.value;
-    changeValue("mounted");
+    changeValue();
   } else {
     localInputValue.value = props.inputValue;
-    changeValue("mounted");
+    changeValue();
   }
+}
+
+watch(() => props.inputValue, () => {
+  console.log(props.inputValue)
+  updatedLocalInputValue()
+})
+
+onMounted(() => {
+  updatedLocalInputValue()
 });
+
+
+
 
 </script>
 
@@ -394,10 +403,7 @@ onMounted(() => {
   <div
     class="calc__wrapper-group-data"
   >
-    <div
-      class="calc__input-wrapper"
-    >
-      <div class="calc__input-label-text" v-if="isExistLabel">
+      <div class="credit__label-text" v-if="isExistLabel">
         {{ label }}
       </div>
       <div class="calc__input-wrapper-data">
@@ -412,7 +418,7 @@ onMounted(() => {
         <input
           ref="trueInput"
           type="text"
-          v-model.number="localInputBufferValue"
+          v-model="localInputBufferValue"
           @keydown.up="plus('key')"
           @keydown.down="minus('key')"
           @blur="inputFocus ? (inputFocus = false) : null"
@@ -431,8 +437,8 @@ onMounted(() => {
         >
           +
         </div>
-        <div v-if="unit?.length" class="calc__input-unit">{{ unit }}</div>
+        <div v-if="unit?.length" class="credit__unit">{{ unit }}</div>
       </div>
-    </div>
+    <slot name="button"></slot>
   </div>
 </template>

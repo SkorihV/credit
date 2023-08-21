@@ -160,7 +160,7 @@ onMounted(() => {
       :class="{open: isOpen }"
       ref="selectRef"
     >
-      <div class="calc__select-label-text" v-if="isExistLabel">
+      <div class="credit__label-text" v-if="isExistLabel">
         {{ label }}
       </div>
       <div class="calc__select-wrapper-right-side">

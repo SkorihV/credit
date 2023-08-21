@@ -10,6 +10,7 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "@vuepic/vue-datepicker": "^6.0.1",
     "css-loader": "^6.8.1",
     "json-server": "^0.17.3",
     "node-sass": "^9.0.0",

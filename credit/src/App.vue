@@ -11,23 +11,28 @@ import UiRadio from "@/components/UiRadio.vue";
 import UiSelect from "@/components/UiSelect.vue";
 import UiTableData from "@/components/UiTableData.vue";
 
+
 import '@vuepic/vue-datepicker/dist/main.css'
 import UiDatePicker from "@/components/UiDatePicker.vue";
+import {makeMultiple} from "@/servises/UtilityServices";
 
 
 const startCreditSum = ref(2000000) // сумма кредита
-const firstPayment = ref(500000) // первоначальный взнос
+const firstPaymentCurrency = ref(500000) // первоначальный взнос
+const firstPaymentPercent = ref(10) // первоначальный взнос
+const firstPaymentType = ref('currency') // тип первоначального взноса
 const timeCredit = ref(20) // срок кредита в месяцах
 const typeTime = ref('year') // тип времени
 const interestRate = ref(9.6) //процентная ставка
 const typeCredit = ref('A')  // тип расчета кредита
-const dateTime = ref('') // дата первого платежа
+const dateTime = ref(0) // дата первого платежа
 const tableData = ref([])
 const totalData = reactive({
   payLocal: 0,
   mainDebtLocal: 0,
   percentLocal: 0,
   balanceLocal: 0,
+  earlyRepaymentLocal: 0,
 
   get pay() {
     return this.payLocal
@@ -53,8 +58,20 @@ const totalData = reactive({
   set balance(value) {
     this.balanceLocal = aroundCeil(value, 100)
   },
+  get earlyRepayment() {
+    return this.earlyRepaymentLocal
+  },
+  set earlyRepayment(value) {
+    this.earlyRepaymentLocal = aroundCeil(value, 100)
+  },
 
 })
+
+const roundUpPaymentSum = ref(10) // сумма округления при расчетах
+
+const earlyRepaymentData = ref([]) // данные для досрочного погашения
+const enabledEarlyRepayment = ref(true)
+
 
 const radioDataTypeCredit = [
   {
@@ -75,6 +92,16 @@ const selectDataTypeTime = [
   {
     selectLabel: "Месяц",
     selectValue: "month"
+  }
+]
+const selectDataFirstPayType = [
+  {
+    selectLabel: "руб",
+    selectValue: "currency"
+  },
+  {
+    selectLabel: "%",
+    selectValue: "percent"
   }
 ]
 
@@ -126,7 +153,7 @@ const annuityCoefficient = computed(() => {
  * @type {ComputedRef<number>}
  */
 const computedStartCreditSum = computed(() => {
-  return startCreditSum.value - firstPayment.value
+  return startCreditSum.value - firstPaymentCurrency.value
 })
 
 /**
@@ -139,14 +166,14 @@ const monthlyPayment = computed(() => {
 })
 
 
-/**
- * ОБЩАЯ_СУММА_КРЕДИТА = ЕЖЕМЕСЯЧНЫЙ_ПЛАТЕЖ * СРОК_ИПОТЕКИ_МЕСЯЦЕВ
- * общая сумма кредита (долг + проценты)
- * @type {ComputedRef<*>}
- */
-const totalSumCredit = computed(() => {
-    return aroundCeil(monthlyPayment.value * amountMonth.value);
-  })
+// /**
+//  * ОБЩАЯ_СУММА_КРЕДИТА = ЕЖЕМЕСЯЧНЫЙ_ПЛАТЕЖ * СРОК_ИПОТЕКИ_МЕСЯЦЕВ
+//  * общая сумма кредита (долг + проценты)
+//  * @type {ComputedRef<*>}
+//  */
+// const totalSumCredit = computed(() => {
+//     return aroundCeil(monthlyPayment.value * amountMonth.value);
+//   })
 
 /**
  * ПЕРЕПЛАТА = ОБЩАЯ_СУММА_КРЕДИТА - СУММА_КРЕДИТА
@@ -156,31 +183,59 @@ const totalSumCredit = computed(() => {
 const overpaymentAmount = computed(() => {
   return aroundCeil(totalData.pay - totalData.mainDebt, 100);
 })
-
+/**
+ *
+ * @type {ComputedRef<number>}
+ */
 const localDateTime = computed(() => {
-  if (!dateTime.value.length) {
+  if (!dateTime.value) {
     return Math.floor(Date.now())
   }
-  let newDate = new Date(dateTime.value)
-  return newDate.getTime()
+  return dateTime.value
 
 })
 
+const isRoundSum = computed(() => {
+  return roundUpPaymentSum.value > 0 && !isNaN(roundUpPaymentSum.value)
+})
 
+const isEarlyRepayment = computed(() => {
+  return Boolean(earlyRepaymentData.value.length)
+})
 
 watch([computedStartCreditSum, localDateTime, interestRate, typeCredit, amountMonth], () => {
   initCalculate()
 })
+
+watch(startCreditSum, () => {
+  updatePercentCurrency()
+})
+watch(firstPaymentCurrency, () => {
+  updatePercentCurrency()
+})
+watch( firstPaymentPercent, () => {
+  updatePercentCurrency()
+})
+
+
+function updatePercentCurrency() {
+  if (firstPaymentType.value === 'currency') {
+    firstPaymentPercent.value = aroundCeil(firstPaymentCurrency.value / startCreditSum.value / 100 * 10000, 100)
+  }
+
+  if (firstPaymentType.value === 'percent') {
+    firstPaymentCurrency.value = aroundCeil(startCreditSum.value / 100 * firstPaymentPercent.value, 100)
+  }
+}
+
 
 
 function aroundCeil(value, factor = 1) {
   return Math.ceil(value * factor) / factor;
 }
 
-
-
 function initCalculate() {
-  if (isNaN(monthlyPayment.value) && startCreditSum.value > firstPayment.value && monthRate.value && amountMonth.value){
+  if (isNaN(monthlyPayment.value) && startCreditSum.value > firstPaymentCurrency.value && monthRate.value && amountMonth.value){
     tableData.value = []
     return null;
   }
@@ -189,171 +244,196 @@ function initCalculate() {
   totalData.mainDebt = 0;
   totalData.balance = 0;
   totalData.percent = 0;
+  totalData.earlyRepayment = 0;
 
 
   let currentSumCredit = computedStartCreditSum.value
-  let newLocalDateTime = localDateTime.value
+
+  let date = new Date(localDateTime.value)
 
   for (let i = 1; i <= amountMonth.value; i++) {
     let pay = 0
     let percent = 0
     let mainDebt = 0
     let balance = 0
+    let earlyRepayment = 0
+    if (isEarlyRepayment.value) {
+      earlyRepayment = getValueEarlyRepayment(date.getTime())
+    }
 
-    let date = new Date(newLocalDateTime)
 
     if (typeCredit.value === 'A') {
       pay = getPay(currentSumCredit)
       percent = getPercentPiece(currentSumCredit)
-      mainDebt = getMainPiece(monthlyPayment.value, percent)
-      currentSumCredit = aroundCeil(currentSumCredit - mainDebt, 100 )
+      mainDebt = getMonthlyDebtRepaymentA(monthlyPayment.value, percent)
+      currentSumCredit = aroundCeil(currentSumCredit - mainDebt - earlyRepayment, 100 )
       balance = currentSumCredit
-      percent = balance === 0 && mainDebt > pay ? 0 : percent
+      // percent = balance === 0 && mainDebt > pay ? 0 : percent
 
     } else if (typeCredit.value === "D") {
 
       percent = getPercentPiece(currentSumCredit)
-      mainDebt = getMonthlyDebtRepayment(currentSumCredit)
+      mainDebt = getMonthlyDebtRepaymentD(currentSumCredit)
       pay = percent + mainDebt
-      currentSumCredit = aroundCeil(currentSumCredit - mainDebt, 100 )
+      currentSumCredit = aroundCeil(currentSumCredit - mainDebt - earlyRepayment, 100 )
       balance = currentSumCredit
     }
 
+
+
     tableData.value.push({
       id: i,
-      date: `${date.toLocaleString('default', { month: 'long' })}  ${date.getFullYear()} г`,
+      date: `${date.toLocaleString('default', { month: 'long' })} ${date.getFullYear()} г`,
       pay,
       percent,
       mainDebt,
-      balance
+      balance,
+      earlyRepayment
     })
     totalData.pay += pay
     totalData.mainDebt += mainDebt
     totalData.percent += percent
+    totalData.earlyRepayment += earlyRepayment
     date.setMonth(date.getMonth() + 1)
-    newLocalDateTime = date.getTime()
+
+    if (balance < 0 ) {
+      break
+    }
   }
   totalData.balance = totalData.percent
 
 
 }
 
+function getValueEarlyRepayment(findTimestemp) {
+  const findDate = new Date(findTimestemp)
+  const findMonth = findDate.getMonth()
+  const findYear = findDate.getFullYear()
 
-/**
- * Расчет по аннуитетному варианту
- */
-function calculateAnnuity() {
-  let currentSumCredit = computedStartCreditSum.value
+  const findRepayment = earlyRepaymentData.value.filter(data => {
+    const currentDate = new Date(data.timestemp)
+    const currentMonth = currentDate.getMonth()
+    const currentYear = currentDate.getFullYear()
 
-  for (let i = 1; i <= amountMonth.value; i++) {
-    const pay = getPay(currentSumCredit)
-    let percent = getPercentPiece(currentSumCredit)
-    let mainDebt = getMainPiece(monthlyPayment.value, percent)
-    currentSumCredit = aroundCeil(currentSumCredit - mainDebt, 100 )
+    return findMonth === currentMonth && findYear === currentYear
+  })
 
-    const balance = currentSumCredit
-    percent = balance === 0 && mainDebt > pay ? 0 : percent
-
-    tableData.value.push({
-      id: i,
-      date: i,
-      pay,
-      percent,
-      mainDebt,
-      balance
-    })
-    totalData.pay += pay
-    totalData.mainDebt += mainDebt
-    totalData.percent += percent
-
-  }
-  totalData.balance = totalData.percent
+  return findRepayment.reduce((accum, thisData) => {
+    if (thisData?.value) {
+      return accum + thisData?.value
+    }
+    return accum
+  }, 0)
 }
-
-function calculateDifferentiated() {
-  let currentSumCredit = computedStartCreditSum.value
-
-  for (let i =1; i <= amountMonth.value; i++) {
-
-    let percent = getPercentPiece(currentSumCredit)
-    const mainDebt = getMonthlyDebtRepayment(currentSumCredit)
-    const pay = percent + mainDebt
-    currentSumCredit = aroundCeil(currentSumCredit - mainDebt, 100 )
-
-    const balance = currentSumCredit
-
-    tableData.value.push({
-      id: i,
-      date: i,
-      pay,
-      percent,
-      mainDebt,
-      balance
-    })
-    totalData.pay += pay
-    totalData.mainDebt += mainDebt
-    totalData.percent += percent
-
-  }
-
-  totalData.balance = totalData.percent
-}
-
-
 
 /**
  * ПРОЦЕНТНАЯ_ЧАСТЬ = ОСТАТОК_ДОЛГА * ЕЖЕМЕСЯЧНАЯ_СТАВКА
  * @param debtBalance
  */
 function getPercentPiece(debtBalance) {
+  if (isRoundSum.value) {
+    const pay = aroundCeil(debtBalance * monthRate.value, 100 );
+    return makeMultiple(pay, roundUpPaymentSum.value)
+  }
+
   return aroundCeil(debtBalance * monthRate.value, 100 );
 }
 
 
-/**
- * ОСНОВНАЯ_ЧАСТЬ = ЕЖЕМЕСЯЧНЫЙ_ПЛАТЕЖ - ПРОЦЕНТНАЯ_ЧАСТЬ
- */
-function getMainPiece(monthlyPayment, percentPiece) {
-  return aroundCeil(monthlyPayment - percentPiece, 100 )
-}
-
 function getPay(currentSumCredit) {
+
+  if(isRoundSum.value) {
+    const pay = aroundCeil(monthlyPayment.value < currentSumCredit ? monthlyPayment.value : currentSumCredit, 100 )
+    return makeMultiple(pay, roundUpPaymentSum.value)
+  }
+
   return aroundCeil(monthlyPayment.value < currentSumCredit ? monthlyPayment.value : currentSumCredit, 100 )
 }
 
+
+/**
+ * Аннуитет
+ * ОСНОВНАЯ_ЧАСТЬ = ЕЖЕМЕСЯЧНЫЙ_ПЛАТЕЖ - ПРОЦЕНТНАЯ_ЧАСТЬ
+ */
+function getMonthlyDebtRepaymentA(monthlyPayment, percentPiece) {
+  if(isRoundSum.value) {
+    const mainDebt =  aroundCeil(monthlyPayment - percentPiece, 100 )
+    return makeMultiple(mainDebt, roundUpPaymentSum.value)
+  }
+
+  return aroundCeil(monthlyPayment - percentPiece, 100 )
+}
 
 /**
  * ЕЖЕМЕСЯЧНОЕ_ПОГАШЕНИЕ_ДОЛГА = СУММА_КРЕДИТА / СРОК_ИПОТЕКИ_МЕСЯЦЕВ
  * @param currentSumDebt
  * @returns {number}
  */
-function getMonthlyDebtRepayment(currentSumDebt) {
+function getMonthlyDebtRepaymentD(currentSumDebt) {
+  if(isRoundSum.value) {
+    const mainDebt =  aroundCeil(currentSumDebt / amountMonth.value, 100)
+    return makeMultiple(mainDebt, roundUpPaymentSum.value)
+  }
   return aroundCeil(currentSumDebt / amountMonth.value, 100)
 }
 
-
-function aroundNumber(value, aroundNum) {
-    return  Math.floor(value / aroundNum) * aroundNum
-}
-
+// function aroundNumber(value, aroundNum) {
+//     return  Math.floor(value / aroundNum) * aroundNum
+// }
 
 function changeSum (value) {
   startCreditSum.value = value
 }
-function changeFirstPayment (value) {
-  firstPayment.value = value
+function changeFirstPaymentCurrency (value) {
+    if (value > startCreditSum.value) {
+      firstPaymentCurrency.value = startCreditSum.value;
+    } else {
+      firstPaymentCurrency.value = value
+    }
+}
+function changeFirstPaymentPercent (value) {
+
+  firstPaymentPercent.value = value
 }
 function changeTimeCredit (value) {
   timeCredit.value = value
 }
 function changeInterestRate (value) {
-  timeCredit.value = value
+  interestRate.value = value
 }
 function changeTypeCredit (value) {
   typeCredit.value = value
 }
 function changeTypeTime (value) {
   typeTime.value = value
+}
+
+function changeTimestemp(value) {
+  dateTime.value = value
+}
+
+function addEarlyRepayment() {
+  earlyRepaymentData.value.push({
+    timestemp: Date.now(),
+    value: 0
+  })
+}
+function changeDateEarlyRepayment({index, timestemp, value}){
+  if (timestemp) {
+    earlyRepaymentData.value[index].timestemp = timestemp
+  }
+  if (value) {
+    earlyRepaymentData.value[index]['value'] = value
+  }
+  initCalculate()
+}
+function removeDateEarlyRepayment(idx){
+  earlyRepaymentData.value = earlyRepaymentData.value.filter((item, index) => index !== idx)
+  initCalculate()
+}
+
+function changeFirstPayType(typePay) {
+  firstPaymentType.value = typePay
 }
 
 
@@ -367,7 +447,10 @@ function changeTypeTime (value) {
         Ежемесячный платеж (аннуитет): {{monthlyPayment}}
         Переплата по кредиту: {{overpaymentAmount}}
         Общая выплата: {{totalData.pay}}
-        {{localDateTime}}
+
+        Тип расчета суммы первоначального взноса: {{firstPaymentType}}
+        Сумма первоначального взноса: {{firstPaymentCurrency}}
+        % первоначального взноса: {{firstPaymentPercent}}
       </pre>
 
     <div class="credit__data-wrapper">
@@ -387,20 +470,36 @@ function changeTypeTime (value) {
 
     <div class="credit__data-wrapper">
       <UiInput
+        v-if="firstPaymentType === 'currency'"
         label="Первоначальный взнос кредита:"
-        unit="руб"
         :controls="true"
         data-type="onlyInteger"
-        :input-value="firstPayment"
+        :input-value="firstPaymentCurrency"
         :max="100000000"
-        min="100"
+        min="1000"
         step="100"
         :discrete-step="true"
-        @changed-value="changeFirstPayment"
+        @changed-value="changeFirstPaymentCurrency"
       />
+      <UiInput
+        v-if="firstPaymentType === 'percent'"
+        label="Первоначальный взнос кредита:"
+        :controls="true"
+        data-type="onlyNumber"
+        :input-value="firstPaymentPercent"
+        :max="90"
+        min="0"
+        :step="0.1"
+        :discrete-step="false"
+        @changed-value="changeFirstPaymentPercent"
+      />
+      <UiSelect
+        :select-data="selectDataFirstPayType"
+        @changed-value="changeFirstPayType"
+      ></UiSelect>
     </div>
 
-    <div class="credit__data-wrapper">
+    <div class="credit__data-wrapper credit__data-wrapper_unite">
       <UiInput
         label="Срок кредита:"
         :controls="true"
@@ -426,7 +525,7 @@ function changeTypeTime (value) {
         :input-value="interestRate"
         :max="50"
         :min="0"
-        :step="0.5"
+        :step="0.1"
         :discrete-step="false"
         unit="% годовых"
         @changed-value="changeInterestRate"
@@ -445,27 +544,41 @@ function changeTypeTime (value) {
       <UiDatePicker
         :date-time="localDateTime"
         label="Дата первого платежа:"
+        @change-timestemp="changeTimestemp"
       />
 
-<!--      <div class="credit__data-value">-->
-<!--        <input type="date" v-model.trim="dateTime">-->
-<!--      </div>-->
-<!--      <div class="credit__unit"></div>-->
     </div>
 
-    <UiTableData
-      :table-data="tableData"
-      :total-data="totalData"
-    />
+    <template v-if="enabledEarlyRepayment">
+      <div class="credit__data-wrapper">
+        <button class="credit__button" @click="addEarlyRepayment">+ Досрочное погашение</button>
+      </div>
+      <div class="credit__data-wrapper" v-for="(data, idx) in earlyRepaymentData" :key="idx">
+        <UiDatePicker
+          :date-time="data.timestemp"
+          @change-timestemp="changeDateEarlyRepayment({index: idx, timestemp: $event, value: null})"
+      />
+        <UiInput
+          @changed-value="changeDateEarlyRepayment({index: idx, timestemp: null, value: $event})"
+          :input-value="data.value"
+          data-type="onlyInteger"
+          :min="1000"
+          :max="1000000"
+          :step="500"
+          :discrete-step="true"
+        >
+          <template #button>
+            <button class="credit__button credit__button_remove" @click="removeDateEarlyRepayment(idx)" >X</button>
+          </template>
+        </UiInput>
+      </div>
+    </template>
 
-<!--    <PaymentSchedule-->
-<!--      :start-credit__sum="startCreditSum"-->
-<!--      :start-date="localDateTime"-->
-<!--      :credit__term-month="amountMonth"-->
-<!--      :monthly-payment="monthlyPayment"-->
-<!--      :monthly-interest-rate="interestRate"-->
-<!--      :type-current-calculation="typeCredit"-->
-<!--    />-->
+      <UiTableData
+        :table-data="tableData"
+        :total-data="totalData"
+        :is-early-repayment="isEarlyRepayment"
+      />
   </div>
 
 </template>
@@ -591,8 +704,13 @@ $c_element_range_color: #cccccc;
 }
 
 
-
+#credit {
+  .dp__main {
+    width: auto;
+  }
+}
 .credit {
+
   &-main-wrapper {
     display: flex;
     flex-direction: column;
@@ -604,15 +722,24 @@ $c_element_range_color: #cccccc;
       display: flex;
       flex-direction: row;
       justify-content: start;
-      align-items: center;
+      align-items: baseline;
       gap: 5px;
       margin: 5px 0;
+      &_unite {
+        @media all and (max-width: 600px) {
+          flex-direction: column;
+        }
+      }
     }
-    &-value {
-      display: flex;
-      gap: 5px;
-    }
+  }
 
+  &__label-text {
+    @include style-title-main;
+    align-items: flex-start;
+    display: flex;
+    gap: 5px;
+    flex: 1;
+    max-width: 300px;
   }
 
   &__unit {
@@ -622,181 +749,10 @@ $c_element_range_color: #cccccc;
     color: $c_element_text_default;
   }
 
-  &__input {
-    &-wrapper {
-      @include style-element-main-wrapper;
-      &-data {
-        display: flex;
-        align-items: center;
-        position: relative;
-        gap: 2px;
-        flex: 1 1 100%;
-        &.stretch {
-          width: 100%;
-        }
-      }
-    }
-
-    &-label {
-      &-text {
-        @include style-title-main;
-        align-items: flex-start;
-        display: flex;
-        gap: 5px;
-      }
-    }
-
-    &-item {
-      font-size: 16px;
-      line-height: 20px;
-      padding: 20px 35px;
-      max-width: 304px;
-      background: $c_element_input_color;
-      color: $c_element_text_default;
-      border: $c_element_border-width solid $c_element_border_color;
-      text-align: center;
-      border-radius: $c_element_border_radius;
-      @media all and (max-width: 480px) {
-        padding: 10px 15px;
-      }
-      &:focus,
-      &:hover {
-        outline: none;
-        border-color: $c_element_border_color_hover;
-        background: $c_element_bg_color_hover;
-        color: $c_element_text_hover;
-      }
-    }
+  &__dp-custom-input {
+    padding-top: 18px;
+    padding-bottom: 18px;
   }
-
-
-
-
-  &__radio {
-    &-wrapper {
-      @include style-element-main-wrapper;
-      &-buttons {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 5px;
-        flex: 1 1 100%;
-        width: 100%;
-      }
-      &.base {
-        .calc__radio-indicator {
-          width: 24px;
-          height: 24px;
-          border-radius: 50%;
-          border: 1px solid $c_element_text_default;
-          position: relative;
-
-          &:after {
-            content: "";
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            border-radius: 50%;
-            width: 10px;
-            height: 10px;
-          }
-        }
-      }
-    }
-    &-label-button {
-      display: flex;
-      position: relative;
-      align-items: center;
-      justify-content: center;
-      padding: 20px 30px;
-      background-color: $c_element_bg_color;
-      border-radius: $c_element_border_radius;
-      border: $c_element_border_width solid $c_element_border_color;
-      cursor: pointer;
-      @include transition;
-      gap: 8px;
-      text-align: start;
-      &.stretch {
-        flex: 1 1 auto;
-      }
-      .calc__icon-element-label-wrapper {
-        //flex: none;
-      }
-      @media all and (max-width: 480px) {
-        padding: 11px 15px;
-      }
-      @media all and (max-width: 360px) {
-        flex: 1 1 100%;
-      }
-      &.onlyImage {
-        padding: 10px;
-      }
-      &.isShowPrompt {
-        padding-right: 35px;
-      }
-      .calc__prompt-wrapper {
-        @include style-prompt-absolute-shift;
-      }
-      &:hover {
-        background-color: $c_element_bg_color_hover;
-        border-color: $c_element_border_color_hover;
-        .calc__radio-name,
-        .calc__radio-subname {
-          color: $c_element_text_hover;
-        }
-        .calc__radio-indicator {
-          border-color: $c_element_text_hover;
-          &:after {
-            background-color: $c_element_text_hover;
-          }
-        }
-      }
-      &.checked {
-        background-color: $c_element_bg_color_selected;
-        border-color: $c_element_border_color_selected;
-        .calc__radio-name,
-        .calc__radio-subname {
-          color: $c_element_text_selected;
-        }
-        .calc__radio-indicator {
-          border-color: $c_element_text_selected;
-          &:after {
-            background-color: $c_element_text_selected;
-          }
-        }
-      }
-      &.error {
-        border-color: $c_base_error_color;
-        .calc__radio-text {
-          color: $c_base_error_color;
-        }
-        .calc__radio-indicator {
-          border-color: $c_base_error_color;
-          &:after {
-            background-color: $c_base_error_color;
-          }
-        }
-      }
-    }
-    &-text {
-      display: flex;
-      align-items: flex-start;
-      flex-direction: column;
-
-      &-wrapper {
-        display: flex;
-        gap: 5px;
-        align-items: center;
-      }
-    }
-  }
-
-
-
-
-
-
-
 
   &__button {
     @include style-decor-border-radius;
@@ -815,6 +771,13 @@ $c_element_range_color: #cccccc;
       cursor: pointer;
       background-color: $c_decor_bg_color_hover;
       color: $c_decor_text_hover;
+    }
+    &_remove {
+      background: red;
+      padding: 18px 10px;
+    }
+    @media all and (max-width: 480px) {
+      padding: 10px;
     }
   }
 
@@ -870,28 +833,15 @@ $c_element_range_color: #cccccc;
 .calc {
   &__wrapper {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
     &-group-data {
       display: flex;
       width: 100%;
-      padding-bottom: 10px;
-      position: relative;
-      flex-direction: column;
-      &.is-highlight {
-        border: 2px dashed blue;
-        background: repeating-linear-gradient(
-            -60deg,
-            blue 0,
-            blue 1px,
-            transparent 1px,
-            transparent 15px
-        );
-        background-color: #fff;
-      }
-      &.indent {
-        padding-left: 10px;
-        padding-right: 10px;
+      align-items: center;
+
+      @media all and (max-width: 600px) {
+        flex-direction: column;
+        align-items: start;
+        gap: 5px;
       }
     }
   }
@@ -899,32 +849,14 @@ $c_element_range_color: #cccccc;
   &__input {
     &-wrapper {
       @include style-element-main-wrapper;
-      &.is-stretch {
-        flex: 1 1 100%;
-      }
+
       &-data {
         display: flex;
         align-items: center;
         position: relative;
         gap: 2px;
-        flex: 1 1 100%;
-        &.stretch {
-          width: 100%;
-        }
       }
-      &.column {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-    }
 
-    &-label {
-      &-text {
-        @include style-title-main;
-        align-items: flex-start;
-        display: flex;
-        gap: 5px;
-      }
     }
 
     &-item {
@@ -954,11 +886,6 @@ $c_element_range_color: #cccccc;
           padding: 10px 15px;
         }
       }
-      &.stretch {
-        width: 100%;
-        max-width: none;
-      }
-
       &.error {
         outline-color: $c_base_error_color;
         border-color: $c_base_error_color;
@@ -990,12 +917,6 @@ $c_element_range_color: #cccccc;
         }
       }
     }
-    &-unit {
-      margin-left: 5px;
-      font-size: 17px;
-      line-height: 20px;
-      color: $c_element_text_default;
-    }
   }
 
   &__radio {
@@ -1005,39 +926,7 @@ $c_element_range_color: #cccccc;
         display: flex;
         flex-wrap: wrap;
         gap: 5px;
-        flex: 1 1 100%;
-        width: 100%;
       }
-      &.column {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-      &.base {
-        .calc__radio-indicator {
-          width: 24px;
-          height: 24px;
-          border-radius: 50%;
-          border: 1px solid $c_element_text_default;
-          position: relative;
-
-          &:after {
-            content: "";
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            border-radius: 50%;
-            width: 10px;
-            height: 10px;
-          }
-        }
-      }
-    }
-    &-label-text {
-      @include style-title-main;
-      align-items: flex-start;
-      display: flex;
-      gap: 5px;
     }
     &-label-button {
       display: flex;
@@ -1052,53 +941,27 @@ $c_element_range_color: #cccccc;
       @include transition;
       gap: 8px;
       text-align: start;
-      &.stretch {
-        flex: 1 1 auto;
-      }
-      .calc__icon-element-label-wrapper {
-        //flex: none;
-      }
+
       @media all and (max-width: 480px) {
         padding: 11px 15px;
       }
       @media all and (max-width: 360px) {
         flex: 1 1 100%;
       }
-      &.onlyImage {
-        padding: 10px;
-      }
-      &.isShowPrompt {
-        padding-right: 35px;
-      }
-      .calc__prompt-wrapper {
-        @include style-prompt-absolute-shift;
-      }
+
+
       &:hover {
         background-color: $c_element_bg_color_hover;
         border-color: $c_element_border_color_hover;
-        .calc__radio-name,
-        .calc__radio-subname {
+        .calc__radio-name{
           color: $c_element_text_hover;
-        }
-        .calc__radio-indicator {
-          border-color: $c_element_text_hover;
-          &:after {
-            background-color: $c_element_text_hover;
-          }
         }
       }
       &.checked {
         background-color: $c_element_bg_color_selected;
         border-color: $c_element_border_color_selected;
-        .calc__radio-name,
-        .calc__radio-subname {
+        .calc__radio-name {
           color: $c_element_text_selected;
-        }
-        .calc__radio-indicator {
-          border-color: $c_element_text_selected;
-          &:after {
-            background-color: $c_element_text_selected;
-          }
         }
       }
       &.error {
@@ -1128,10 +991,6 @@ $c_element_range_color: #cccccc;
     &-name {
       font-size: 16px;
       line-height: 20px;
-      color: $c_element_text_default;
-    }
-    &-subname {
-      @include style-label-sub;
       color: $c_element_text_default;
     }
   }
@@ -1168,22 +1027,11 @@ $c_element_range_color: #cccccc;
         width: 100%;
       }
     }
-    &-label {
-      &-text {
-        @include style-title-main;
-        align-items: flex-start;
-        display: flex;
-        gap: 5px;
-      }
-    }
     &-change {
       &-wrapper {
         cursor: pointer;
-        font-size: 15px;
-        line-height: 16px;
         position: relative;
-        //flex: 1 1 100%;
-        min-width: 200px;
+        min-width: 150px;
         @media all and (max-width: 480px) {
           width: 100%;
         }
@@ -1239,10 +1087,6 @@ $c_element_range_color: #cccccc;
           position: absolute;
           right: 30px;
         }
-
-        .calc__prompt-wrapper {
-          @include style-prompt-absolute-shift;
-        }
       }
     }
     &-option {
@@ -1252,6 +1096,7 @@ $c_element_range_color: #cccccc;
         position: absolute;
         border-bottom-left-radius: $c_element_border-radius;
         border-bottom-right-radius: $c_element_border-radius;
+        background: $c_decor_bg_color;
         z-index: 99;
         left: 50%;
         overflow: hidden;
