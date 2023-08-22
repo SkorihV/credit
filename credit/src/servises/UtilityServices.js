@@ -52,10 +52,15 @@ function makeMultiple(originalNumber, multiple) {
   return originalNumber - remainder + multiple;
 }
 
+function aroundCeil(value, factor = 1) {
+  return Math.ceil(value * factor) / factor;
+}
+
 
 
 export {
   decimalAdjust,
   checkedValueOnVoid,
-  makeMultiple
+  makeMultiple,
+    aroundCeil
 };

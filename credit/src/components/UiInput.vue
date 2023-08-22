@@ -386,7 +386,6 @@ function updatedLocalInputValue() {
 }
 
 watch(() => props.inputValue, () => {
-  console.log(props.inputValue)
   updatedLocalInputValue()
 })
 

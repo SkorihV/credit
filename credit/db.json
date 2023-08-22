@@ -1,4 +1,80 @@
 {
+  "calculatorOptions": {
+    "title": "Ипотечный калькулятор",
+    "enabledCreditType": "both",
+    "enabledEarlyRepayment": 1,
+    "enabledChangeFirstPay": 1,
+    "enabledFirstPayment": 1,
+    "roundUpPaymentSum": "0",
+    "currency": "руб",
+    "startSum": {
+      "title": "Сумма кредита:",
+      "startCreditSum": 500000,
+      "min": 50000,
+      "max": 10000000,
+      "step": 1000,
+      "controls": true,
+      "discreteStep": true
+    },
+    "firstPaymentCurrency": {
+      "title": "Первоначальный взнос:",
+      "firstPaymentCurrency": 50000,
+      "min": 10000,
+      "max": 10000000,
+      "step": 1000,
+      "controls": true,
+      "discreteStep": true
+    },
+    "firstPaymentPercent": {
+      "title": "Первоначальный взнос в %:",
+      "firstPaymentPercent": 10,
+      "min": 10,
+      "max": 90,
+      "step": 0.1,
+      "controls": true,
+      "discreteStep": true
+    },
+    "timeCreditMonth": {
+      "title": "Срок кредита в месяцах:",
+      "timeCreditMonth": 12,
+      "min": 12,
+      "max": 360,
+      "step": 1,
+      "controls": true,
+      "discreteStep": true
+    },
+    "timeCreditYear": {
+      "title": "Срок кредита в годах:",
+      "timeCreditYear": 5,
+      "min": 1,
+      "max": 50,
+      "step": 1,
+      "controls": true,
+      "discreteStep": true
+    },
+    "interestRate": {
+      "title": "Процентная ставка:",
+      "interestRate": 9.8,
+      "min": 1,
+      "max": 50,
+      "step": 1,
+      "controls": true,
+      "discreteStep": true
+    },
+    "earlyRepayment": {
+      "title": "Первоначальный взнос:",
+      "earlyRepayment": 50000,
+      "min": 10000,
+      "max": 10000000,
+      "step": 1000,
+      "controls": true,
+      "discreteStep": true
+    },
+    "textAbove": "",
+    "textAfter": "",
+    "parent": "0;"
+  },
+
   "credit-calculator": {
     "type_calculate": "Both",
     "bank_list": {

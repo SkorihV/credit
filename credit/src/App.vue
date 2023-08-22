@@ -4,27 +4,34 @@
 //https://www.calc.ru/kreditnyi-kalkulyator.html
 //https://calcus.ru/kalkulyator-ipoteki
 
+import '@vuepic/vue-datepicker/dist/main.css'
+import {ref, computed, reactive, watch, onMounted} from 'vue'
+import {makeMultiple, aroundCeil} from "@/servises/UtilityServices";
 
-import {ref, computed, reactive, watch} from 'vue'
 import UiInput from "@/components/UiInput.vue";
 import UiRadio from "@/components/UiRadio.vue";
 import UiSelect from "@/components/UiSelect.vue";
 import UiTableData from "@/components/UiTableData.vue";
-
-
-import '@vuepic/vue-datepicker/dist/main.css'
 import UiDatePicker from "@/components/UiDatePicker.vue";
-import {makeMultiple} from "@/servises/UtilityServices";
+import ResultInfoBlock from "@/components/resultInfoBlock.vue";
 
+import {IS_LOCAL} from "@/constants";
+const inputOptions = ref({})
 
 const startCreditSum = ref(2000000) // сумма кредита
-const firstPaymentCurrency = ref(500000) // первоначальный взнос
-const firstPaymentPercent = ref(10) // первоначальный взнос
+
+const firstPaymentCurrency = ref(500000) // первоначальный взнос в валюте
+const firstPaymentPercent = ref(10) // первоначальный взнос в процентах
+
 const firstPaymentType = ref('currency') // тип первоначального взноса
-const timeCredit = ref(20) // срок кредита в месяцах
+const timeCreditYear = ref(20) // срок кредита в годах
+const timeCreditMonth = ref(20) // срок кредита в месяцах
 const typeTime = ref('year') // тип времени
+
 const interestRate = ref(9.6) //процентная ставка
-const typeCredit = ref('A')  // тип расчета кредита
+const currentTypeCredit = ref('A')  // тип расчета кредита
+
+
 const dateTime = ref(0) // дата первого платежа
 const tableData = ref([])
 const totalData = reactive({
@@ -64,14 +71,22 @@ const totalData = reactive({
   set earlyRepayment(value) {
     this.earlyRepaymentLocal = aroundCeil(value, 100)
   },
-
 })
 
-const roundUpPaymentSum = ref(10) // сумма округления при расчетах
-
+let roundUpPaymentSum = 100 // сумма округления при расчетах
+const prepaymentType = ref('month')
 const earlyRepaymentData = ref([]) // данные для досрочного погашения
-const enabledEarlyRepayment = ref(true)
 
+
+let enabledEarlyRepayment = true
+/**
+ * both, annuity, differentiated
+ * @type {string}
+ */
+let enabledCreditType = 'both'
+let enabledChangeFirstPay = true
+let enabledFirstPayment = true
+let currency = "руб"
 
 const radioDataTypeCredit = [
   {
@@ -83,6 +98,16 @@ const radioDataTypeCredit = [
     radioValue: "D"
   }
 ]
+
+const localRadioDataTypeCredit = computed(() => {
+  if (enabledCreditType === 'annuity') {
+    return radioDataTypeCredit.filter(item => item.radioValue === 'A')
+  } else if (enabledCreditType === 'differentiated') {
+    return radioDataTypeCredit.filter(item => item.radioValue === 'D')
+  } else {
+    return radioDataTypeCredit
+  }
+})
 
 const selectDataTypeTime = [
   {
@@ -96,7 +121,7 @@ const selectDataTypeTime = [
 ]
 const selectDataFirstPayType = [
   {
-    selectLabel: "руб",
+    selectLabel: currency,
     selectValue: "currency"
   },
   {
@@ -105,6 +130,16 @@ const selectDataFirstPayType = [
   }
 ]
 
+const selectDataPrepaymentType = [
+  {
+    selectLabel: "Срок кредита",
+    selectValue: "month"
+  },
+  {
+    selectLabel: "Сумма оплаты",
+    selectValue: "pay"
+  }
+]
 
 
 /**
@@ -114,9 +149,9 @@ const selectDataFirstPayType = [
  */
 const amountMonth = computed(() => {
     if (typeTime.value === "year") {
-      return timeCredit.value * 12;
+      return timeCreditYear.value * 12;
     }
-    return timeCredit.value;
+    return timeCreditMonth.value;
   })
 /**
  * ЕЖЕМЕСЯЧНАЯ_СТАВКА = ПРОЦЕНТНАЯ_СТАВКА_ГОДОВЫХ / 12 / 100
@@ -153,7 +188,7 @@ const annuityCoefficient = computed(() => {
  * @type {ComputedRef<number>}
  */
 const computedStartCreditSum = computed(() => {
-  return startCreditSum.value - firstPaymentCurrency.value
+  return enabledFirstPayment ? startCreditSum.value - firstPaymentCurrency.value : startCreditSum.value
 })
 
 /**
@@ -161,28 +196,10 @@ const computedStartCreditSum = computed(() => {
  * сумма оплаты в месяц
  * @type {ComputedRef<number>}
  */
-const monthlyPayment = computed(() => {
-  return aroundCeil((computedStartCreditSum.value  * annuityCoefficient.value), 100)
-})
+const monthlyPaymentAnnuity = computed(() =>  aroundCeil((computedStartCreditSum.value  * annuityCoefficient.value), 100))
+const monthlyPaymentDifferentiated = computed(() => tableData.value[0]?.pay ? `${tableData.value[0]?.pay} / ${tableData.value[tableData.value.length - 1].pay}` : null)
 
 
-// /**
-//  * ОБЩАЯ_СУММА_КРЕДИТА = ЕЖЕМЕСЯЧНЫЙ_ПЛАТЕЖ * СРОК_ИПОТЕКИ_МЕСЯЦЕВ
-//  * общая сумма кредита (долг + проценты)
-//  * @type {ComputedRef<*>}
-//  */
-// const totalSumCredit = computed(() => {
-//     return aroundCeil(monthlyPayment.value * amountMonth.value);
-//   })
-
-/**
- * ПЕРЕПЛАТА = ОБЩАЯ_СУММА_КРЕДИТА - СУММА_КРЕДИТА
- * сумма переплаты (начисленные проценты)
- * @type {ComputedRef<*>}
- */
-const overpaymentAmount = computed(() => {
-  return aroundCeil(totalData.pay - totalData.mainDebt, 100);
-})
 /**
  *
  * @type {ComputedRef<number>}
@@ -196,27 +213,20 @@ const localDateTime = computed(() => {
 })
 
 const isRoundSum = computed(() => {
-  return roundUpPaymentSum.value > 0 && !isNaN(roundUpPaymentSum.value)
+  return roundUpPaymentSum > 0 && !isNaN(roundUpPaymentSum)
 })
 
 const isEarlyRepayment = computed(() => {
   return Boolean(earlyRepaymentData.value.length)
 })
 
-watch([computedStartCreditSum, localDateTime, interestRate, typeCredit, amountMonth], () => {
+watch([computedStartCreditSum, localDateTime, interestRate, currentTypeCredit, amountMonth, prepaymentType], () => {
   initCalculate()
 })
 
-watch(startCreditSum, () => {
+watch([startCreditSum, firstPaymentCurrency, firstPaymentPercent], () => {
   updatePercentCurrency()
 })
-watch(firstPaymentCurrency, () => {
-  updatePercentCurrency()
-})
-watch( firstPaymentPercent, () => {
-  updatePercentCurrency()
-})
-
 
 function updatePercentCurrency() {
   if (firstPaymentType.value === 'currency') {
@@ -228,14 +238,8 @@ function updatePercentCurrency() {
   }
 }
 
-
-
-function aroundCeil(value, factor = 1) {
-  return Math.ceil(value * factor) / factor;
-}
-
 function initCalculate() {
-  if (isNaN(monthlyPayment.value) && startCreditSum.value > firstPaymentCurrency.value && monthRate.value && amountMonth.value){
+  if (isNaN(monthlyPaymentAnnuity.value) && startCreditSum.value > firstPaymentCurrency.value && monthRate.value && amountMonth.value){
     tableData.value = []
     return null;
   }
@@ -248,8 +252,9 @@ function initCalculate() {
 
 
   let currentSumCredit = computedStartCreditSum.value
-
+  let localMonthlyPaymentAnnuity = monthlyPaymentAnnuity.value
   let date = new Date(localDateTime.value)
+  let beforeIsEarlyRepayment = false;
 
   for (let i = 1; i <= amountMonth.value; i++) {
     let pay = 0
@@ -262,24 +267,35 @@ function initCalculate() {
     }
 
 
-    if (typeCredit.value === 'A') {
-      pay = getPay(currentSumCredit)
+    if (currentTypeCredit.value === 'A') {
+
+      if(prepaymentType.value === "pay" && beforeIsEarlyRepayment) {
+        const currentAmountMonth = amountMonth.value - i
+        currentSumCredit -= earlyRepayment
+        localMonthlyPaymentAnnuity = getMonthlyPaymentAnnuity(currentSumCredit, currentAmountMonth)
+      }
+
+      pay = getPayAnnuity(currentSumCredit, localMonthlyPaymentAnnuity)
       percent = getPercentPiece(currentSumCredit)
-      mainDebt = getMonthlyDebtRepaymentA(monthlyPayment.value, percent)
-      currentSumCredit = aroundCeil(currentSumCredit - mainDebt - earlyRepayment, 100 )
+      mainDebt = getMonthlyDebtRepaymentA(localMonthlyPaymentAnnuity, percent)
+
+      if (prepaymentType.value === "pay" && beforeIsEarlyRepayment ) {
+        currentSumCredit = aroundCeil(currentSumCredit - mainDebt , 100 )
+      } else {
+        currentSumCredit = aroundCeil(currentSumCredit - mainDebt - earlyRepayment, 100 )
+      }
+
       balance = currentSumCredit
       // percent = balance === 0 && mainDebt > pay ? 0 : percent
 
-    } else if (typeCredit.value === "D") {
+    } else if (currentTypeCredit.value === "D") {
 
       percent = getPercentPiece(currentSumCredit)
-      mainDebt = getMonthlyDebtRepaymentD(currentSumCredit)
+      mainDebt = getMonthlyDebtRepaymentD()
       pay = percent + mainDebt
       currentSumCredit = aroundCeil(currentSumCredit - mainDebt - earlyRepayment, 100 )
       balance = currentSumCredit
     }
-
-
 
     tableData.value.push({
       id: i,
@@ -296,13 +312,13 @@ function initCalculate() {
     totalData.earlyRepayment += earlyRepayment
     date.setMonth(date.getMonth() + 1)
 
+    beforeIsEarlyRepayment = Boolean(earlyRepayment > 0)
+
     if (balance < 0 ) {
       break
     }
   }
   totalData.balance = totalData.percent
-
-
 }
 
 function getValueEarlyRepayment(findTimestemp) {
@@ -333,23 +349,21 @@ function getValueEarlyRepayment(findTimestemp) {
 function getPercentPiece(debtBalance) {
   if (isRoundSum.value) {
     const pay = aroundCeil(debtBalance * monthRate.value, 100 );
-    return makeMultiple(pay, roundUpPaymentSum.value)
+    return makeMultiple(pay, roundUpPaymentSum)
   }
 
   return aroundCeil(debtBalance * monthRate.value, 100 );
 }
 
-
-function getPay(currentSumCredit) {
+function getPayAnnuity(currentSumCredit, monthlyPaymentAnnuity) {
 
   if(isRoundSum.value) {
-    const pay = aroundCeil(monthlyPayment.value < currentSumCredit ? monthlyPayment.value : currentSumCredit, 100 )
-    return makeMultiple(pay, roundUpPaymentSum.value)
+    const pay = aroundCeil(monthlyPaymentAnnuity < currentSumCredit ? monthlyPaymentAnnuity : currentSumCredit, 100 )
+    return makeMultiple(pay, roundUpPaymentSum)
   }
 
-  return aroundCeil(monthlyPayment.value < currentSumCredit ? monthlyPayment.value : currentSumCredit, 100 )
+  return aroundCeil(monthlyPaymentAnnuity < currentSumCredit ? monthlyPaymentAnnuity : currentSumCredit, 100 )
 }
-
 
 /**
  * Аннуитет
@@ -358,7 +372,7 @@ function getPay(currentSumCredit) {
 function getMonthlyDebtRepaymentA(monthlyPayment, percentPiece) {
   if(isRoundSum.value) {
     const mainDebt =  aroundCeil(monthlyPayment - percentPiece, 100 )
-    return makeMultiple(mainDebt, roundUpPaymentSum.value)
+    return makeMultiple(mainDebt, roundUpPaymentSum)
   }
 
   return aroundCeil(monthlyPayment - percentPiece, 100 )
@@ -366,20 +380,39 @@ function getMonthlyDebtRepaymentA(monthlyPayment, percentPiece) {
 
 /**
  * ЕЖЕМЕСЯЧНОЕ_ПОГАШЕНИЕ_ДОЛГА = СУММА_КРЕДИТА / СРОК_ИПОТЕКИ_МЕСЯЦЕВ
- * @param currentSumDebt
  * @returns {number}
  */
-function getMonthlyDebtRepaymentD(currentSumDebt) {
+function getMonthlyDebtRepaymentD() {
   if(isRoundSum.value) {
-    const mainDebt =  aroundCeil(currentSumDebt / amountMonth.value, 100)
-    return makeMultiple(mainDebt, roundUpPaymentSum.value)
+    const mainDebt =  aroundCeil(computedStartCreditSum.value / amountMonth.value, 100)
+    return makeMultiple(mainDebt, roundUpPaymentSum)
   }
-  return aroundCeil(currentSumDebt / amountMonth.value, 100)
+  return aroundCeil(computedStartCreditSum.value / amountMonth.value, 100)
 }
 
-// function aroundNumber(value, aroundNum) {
-//     return  Math.floor(value / aroundNum) * aroundNum
-// }
+
+/**
+ * месячный платеж
+ * @param currentAmountMonth
+ * @returns {number|number}
+ */
+function getAnnuityCoefficient(currentAmountMonth) {
+  const top = aroundCeil(Math.pow( (1 + monthRate.value), currentAmountMonth), 1000000) * monthRate.value
+  const bottom = aroundCeil(Math.pow( (1 + monthRate.value), currentAmountMonth), 1000000) - 1
+  const result =  top / bottom
+  return isNaN(result) ? 0 : result
+}
+
+/**
+ * Получить Ежемесячный платеж при досрочном погашении
+ * ЕЖЕМЕСЯЧНЫЙ_ПЛАТЕЖ = СУММА_КРЕДИТА * ЕЖЕМЕСЯЧНАЯ_СТАВКА * ОБЩАЯ_СТАВКА / (ОБЩАЯ_СТАВКА - 1)
+ * сумма оплаты в месяц
+ * @type {ComputedRef<number>}
+ */
+function getMonthlyPaymentAnnuity(currentCreditSum, currentAmountMonth) {
+  const newAnnuityCoefficient = getAnnuityCoefficient(currentAmountMonth)
+  return aroundCeil((currentCreditSum * newAnnuityCoefficient), 100)
+}
 
 function changeSum (value) {
   startCreditSum.value = value
@@ -395,14 +428,17 @@ function changeFirstPaymentPercent (value) {
 
   firstPaymentPercent.value = value
 }
-function changeTimeCredit (value) {
-  timeCredit.value = value
+function changeTimeCreditYear (value) {
+  timeCreditYear.value = value
+}
+function changeTimeCreditMonth (value) {
+  timeCreditMonth.value = value
 }
 function changeInterestRate (value) {
   interestRate.value = value
 }
 function changeTypeCredit (value) {
-  typeCredit.value = value
+  currentTypeCredit.value = value
 }
 function changeTypeTime (value) {
   typeTime.value = value
@@ -415,7 +451,7 @@ function changeTimestemp(value) {
 function addEarlyRepayment() {
   earlyRepaymentData.value.push({
     timestemp: Date.now(),
-    value: 0
+    value: inputOptions.value?.earlyRepayment?.earlyRepayment
   })
 }
 function changeDateEarlyRepayment({index, timestemp, value}){
@@ -436,61 +472,108 @@ function changeFirstPayType(typePay) {
   firstPaymentType.value = typePay
 }
 
+function chanePrepaymentType(type) {
+  prepaymentType.value = type
+}
+
+onMounted(async () => {
+  if (IS_LOCAL) {
+    await fetch('http://localhost:5001/calculatorOptions')
+      .then((response) => {
+        return response.json()
+      })
+      .then((data) => {
+        inputOptions.value = data
+      })
+  } else {
+    try {
+      inputOptions.value = JSON.parse(
+        JSON.stringify(window?.calculatorOptions)
+      )
+    } catch (e) {
+      console.error(
+        "Не удалось получить настройки для калькулятора" + e.message
+      );
+    }
+  }
+
+
+  startCreditSum.value = inputOptions.value?.startSum?.startCreditSum
+
+  firstPaymentCurrency.value = inputOptions.value?.firstPaymentCurrency?.firstPaymentCurrency
+  firstPaymentPercent.value = inputOptions.value?.firstPaymentPercent?.firstPaymentPercent
+  timeCreditYear.value = inputOptions.value?.timeCreditYear?.timeCreditYear
+  timeCreditMonth.value = inputOptions.value?.timeCreditMonth?.timeCreditMonth
+  interestRate.value = inputOptions.value?.interestRate?.interestRate
+
+
+
+  enabledEarlyRepayment = Boolean(inputOptions.value?.enabledEarlyRepayment)
+  enabledCreditType = Boolean(inputOptions.value?.enabledCreditType)
+  enabledChangeFirstPay = Boolean(inputOptions.value?.enabledChangeFirstPay)
+  enabledFirstPayment = Boolean(inputOptions.value?.enabledFirstPayment)
+  roundUpPaymentSum = parseFloat(inputOptions.value?.roundUpPaymentSum) === 0 ? 1 : parseFloat(inputOptions.value?.roundUpPaymentSum)
+  currency = inputOptions.value?.currency
+
+  updatePercentCurrency()
+  initCalculate()
+})
 
 </script>
 
 
 <template>
   <div class="credit__main-wrapper">
-      <pre>
-        Сумма кредита: {{computedStartCreditSum}}
-        Ежемесячный платеж (аннуитет): {{monthlyPayment}}
-        Переплата по кредиту: {{overpaymentAmount}}
-        Общая выплата: {{totalData.pay}}
-
-        Тип расчета суммы первоначального взноса: {{firstPaymentType}}
-        Сумма первоначального взноса: {{firstPaymentCurrency}}
-        % первоначального взноса: {{firstPaymentPercent}}
-      </pre>
+      <result-info-block
+        :enabled-first-payment="enabledFirstPayment"
+        :first-payment-currency="firstPaymentCurrency"
+        :first-payment-percent="firstPaymentPercent"
+        :first-payment-type="firstPaymentType"
+        :computed-start-credit-sum="computedStartCreditSum"
+        :monthly-payment-annuity="monthlyPaymentAnnuity"
+        :monthly-payment-differentiated="monthlyPaymentDifferentiated"
+        :total-data="totalData"
+        :type-credit="currentTypeCredit"
+      />
 
     <div class="credit__data-wrapper">
       <UiInput
-        label="Сумма кредита:"
-        unit="руб"
-        :controls="true"
+        :label="inputOptions?.startSum?.title"
+        :unit="currency"
+        :controls="inputOptions?.startSum?.controls"
         data-type="onlyInteger"
         :input-value="startCreditSum"
-        :max="100000000"
-        min="100"
-        step="50"
-        :discrete-step="false"
+        :max="inputOptions?.startSum?.max"
+        :min="inputOptions?.startSum?.min"
+        :step="inputOptions?.startSum?.step"
+        :discrete-step="inputOptions?.startSum?.discreteStep"
         @changed-value="changeSum"
       />
     </div>
 
-    <div class="credit__data-wrapper">
+    <div class="credit__data-wrapper" v-if="enabledFirstPayment">
       <UiInput
         v-if="firstPaymentType === 'currency'"
-        label="Первоначальный взнос кредита:"
-        :controls="true"
+        :label="inputOptions?.firstPaymentCurrency?.title"
+        :controls="inputOptions?.firstPaymentCurrency?.controls"
         data-type="onlyInteger"
         :input-value="firstPaymentCurrency"
-        :max="100000000"
-        min="1000"
-        step="100"
-        :discrete-step="true"
+        :max="inputOptions?.firstPaymentCurrency?.max"
+        :min="inputOptions?.firstPaymentCurrency?.min"
+        :step="inputOptions?.firstPaymentCurrency?.step"
+        :discrete-step="inputOptions?.firstPaymentCurrency?.discreteStep"
         @changed-value="changeFirstPaymentCurrency"
       />
       <UiInput
         v-if="firstPaymentType === 'percent'"
-        label="Первоначальный взнос кредита:"
-        :controls="true"
+        :label="inputOptions?.firstPaymentPercent?.title"
+        :controls="inputOptions?.firstPaymentPercent?.controls"
         data-type="onlyNumber"
         :input-value="firstPaymentPercent"
-        :max="90"
-        min="0"
-        :step="0.1"
-        :discrete-step="false"
+        :max="inputOptions?.firstPaymentPercent?.max"
+        :min="inputOptions?.firstPaymentPercent?.min"
+        :step="inputOptions?.firstPaymentPercent?.step"
+        :discrete-step="nputOptions?.firstPaymentPercent?.discreteStep"
         @changed-value="changeFirstPaymentPercent"
       />
       <UiSelect
@@ -501,15 +584,28 @@ function changeFirstPayType(typePay) {
 
     <div class="credit__data-wrapper credit__data-wrapper_unite">
       <UiInput
-        label="Срок кредита:"
-        :controls="true"
+        v-if="typeTime === 'year'"
+        :label="inputOptions?.timeCreditYear?.title"
+        :controls="inputOptions?.timeCreditYear?.controls"
         data-type="onlyInteger"
-        :input-value="timeCredit"
-        :max="20"
-        :min="1"
-        :step="2"
-        :discrete-step="true"
-        @changed-value="changeTimeCredit"
+        :input-value="timeCreditYear"
+        :max="inputOptions?.timeCreditYear?.max"
+        :min="inputOptions?.timeCreditYear?.min"
+        :step="inputOptions?.timeCreditYear?.step"
+        :discrete-step="inputOptions?.timeCreditYear?.discreteStep"
+        @changed-value="changeTimeCreditYear"
+      />
+      <UiInput
+        v-if="typeTime === 'month'"
+        :label="inputOptions?.timeCreditMonth?.title"
+        :controls="inputOptions?.timeCreditMonth?.controls"
+        data-type="onlyInteger"
+        :input-value="timeCreditMonth"
+        :max="inputOptions?.timeCreditMonth?.max"
+        :min="inputOptions?.timeCreditMonth?.min"
+        :step="inputOptions?.timeCreditMonth?.step"
+        :discrete-step="inputOptions?.timeCreditMonth?.discreteStep"
+        @changed-value="changeTimeCreditMonth"
       />
       <UiSelect
         :select-data="selectDataTypeTime"
@@ -519,14 +615,14 @@ function changeFirstPayType(typePay) {
 
     <div class="credit__data-wrapper">
       <UiInput
-        label="Процентная ставка:"
-        :controls="true"
+        :label="inputOptions?.interestRate?.title"
+        :controls="inputOptions?.interestRate?.controls"
         data-type="onlyNumber"
         :input-value="interestRate"
-        :max="50"
-        :min="0"
-        :step="0.1"
-        :discrete-step="false"
+        :max="inputOptions?.interestRate?.max"
+        :min="inputOptions?.interestRate?.min"
+        :step="inputOptions?.interestRate?.step"
+        :discrete-step="inputOptions?.interestRate?.discreteStep"
         unit="% годовых"
         @changed-value="changeInterestRate"
       />
@@ -535,12 +631,12 @@ function changeFirstPayType(typePay) {
     <div class="credit__data-wrapper">
       <UiRadio
         label="Тип платежей:"
-        :radioData="radioDataTypeCredit"
+        :radioData="localRadioDataTypeCredit"
         @changed-value="changeTypeCredit"
       />
     </div>
 
-    <div class="credit__data-wrapper">
+    <div class="credit__data-wrapper" v-if="enabledChangeFirstPay">
       <UiDatePicker
         :date-time="localDateTime"
         label="Дата первого платежа:"
@@ -553,6 +649,13 @@ function changeFirstPayType(typePay) {
       <div class="credit__data-wrapper">
         <button class="credit__button" @click="addEarlyRepayment">+ Досрочное погашение</button>
       </div>
+      <div class="credit__data-wrapper" v-if="isEarlyRepayment && currentTypeCredit === 'A'">
+        <ui-select
+          :select-data="selectDataPrepaymentType"
+          label="Тип досрочного погашения:"
+          @changed-value="chanePrepaymentType"
+        />
+      </div>
       <div class="credit__data-wrapper" v-for="(data, idx) in earlyRepaymentData" :key="idx">
         <UiDatePicker
           :date-time="data.timestemp"
@@ -560,12 +663,13 @@ function changeFirstPayType(typePay) {
       />
         <UiInput
           @changed-value="changeDateEarlyRepayment({index: idx, timestemp: null, value: $event})"
-          :input-value="data.value"
+          :input-value="inputOptions?.earlyRepayment?.earlyRepayment"
           data-type="onlyInteger"
-          :min="1000"
-          :max="1000000"
-          :step="500"
-          :discrete-step="true"
+          :min="inputOptions?.earlyRepayment?.min"
+          :max="inputOptions?.earlyRepayment?.max"
+          :step="inputOptions?.earlyRepayment?.earlyRepayment.step"
+          :discrete-step="inputOptions?.earlyRepayment?.discreteStep"
+          :controls="inputOptions?.earlyRepayment?.controls"
         >
           <template #button>
             <button class="credit__button credit__button_remove" @click="removeDateEarlyRepayment(idx)" >X</button>
@@ -704,7 +808,7 @@ $c_element_range_color: #cccccc;
 }
 
 
-#credit {
+#credit_calculator {
   .dp__main {
     width: auto;
   }
@@ -749,10 +853,22 @@ $c_element_range_color: #cccccc;
     color: $c_element_text_default;
   }
 
-  &__dp-custom-input {
-    padding-top: 18px;
-    padding-bottom: 18px;
+  &__info-block {
+    &-wrapper {
+      display: flex;
+      flex-direction: column;
+    }
+    &-item {
+      display: flex;
+      gap: 5px;
+    }
+    &-title {
+      @include style-title-main;
+
+    }
   }
+
+
 
   &__button {
     @include style-decor-border-radius;
@@ -826,6 +942,13 @@ $c_element_range_color: #cccccc;
   }
   &__table tr td:last-child, &__table tr th:last-child {
     border-right: none;
+  }
+
+
+
+  &__dp-custom-input {
+    padding-top: 18px;
+    padding-bottom: 18px;
   }
 }
 
@@ -1023,15 +1146,13 @@ $c_element_range_color: #cccccc;
       }
       &-right-side {
         display: flex;
-        flex: 1 1 100%;
-        width: 100%;
       }
     }
     &-change {
       &-wrapper {
         cursor: pointer;
         position: relative;
-        min-width: 150px;
+        min-width: 220px;
         @media all and (max-width: 480px) {
           width: 100%;
         }
