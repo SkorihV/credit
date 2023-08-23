@@ -1,12 +1,10 @@
 {
   "calculatorOptions": {
-    "title": "Ипотечный калькулятор",
-    "enabledCreditType": "both",
-    "enabledEarlyRepayment": 1,
-    "enabledChangeFirstPay": 1,
-    "enabledFirstPayment": 1,
+    "enabledFirstPayment": true,
+    "enabledChangeFirstPay": true,
     "roundUpPaymentSum": "0",
     "currency": "руб",
+    "datepickerLanguage": "ru",
     "startSum": {
       "title": "Сумма кредита:",
       "startCreditSum": 500000,
@@ -41,7 +39,8 @@
       "max": 360,
       "step": 1,
       "controls": true,
-      "discreteStep": true
+      "discreteStep": true,
+      "labelForSelect": "Месяц"
     },
     "timeCreditYear": {
       "title": "Срок кредита в годах:",
@@ -50,25 +49,50 @@
       "max": 50,
       "step": 1,
       "controls": true,
-      "discreteStep": true
+      "discreteStep": true,
+      "labelForSelect": "Год"
     },
     "interestRate": {
       "title": "Процентная ставка:",
       "interestRate": 9.8,
       "min": 1,
       "max": 50,
-      "step": 1,
+      "step": 0.1,
       "controls": true,
-      "discreteStep": true
+      "discreteStep": true,
+      "disabled": true,
+      "unit": "% годовых"
+    },
+    "creditType": {
+      "title": "Тип платежей:",
+      "enabledCreditType": "both",
+      "annuity": "Аннуитетный",
+      "differentiated": "Дифференциальный"
     },
     "earlyRepayment": {
       "title": "Первоначальный взнос:",
+      "enabledEarlyRepayment": true,
       "earlyRepayment": 50000,
       "min": 10000,
       "max": 10000000,
+      "controls": 1,
       "step": 1000,
-      "controls": true,
-      "discreteStep": true
+      "discreteStep": 1,
+      "labelRepaymentType": "Тип досрочного погашения:",
+      "repaymentTypeTime": "Срок кредита",
+      "repaymentTypeSum": "Сумма оплаты",
+      "btnRepayment": "+ Досрочное погашение"
+    },
+    "otherLabels": {
+      "title": "",
+      "caption": "Платеж, руб",
+      "date": "Дата",
+      "pay": "Платеж",
+      "percent": "Проценты",
+      "mainDebt": "Основной долг",
+      "balance": "Остаток долга",
+      "repayment": "Досрочное погашение",
+      "btnToggleTable": "Показать расчет"
     },
     "textAbove": "",
     "textAfter": "",

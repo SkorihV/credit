@@ -8,6 +8,39 @@
   </head>
   <body>
     <div id="credit_calculator"></div>
+    <div
+            id="calc__form-for-result"
+            class="tpl-anketa calc__form-for-result calc__form-for-result-style"
+    >
+        <form style="margin-bottom: 200px" action="!#">
+            <label class="calc__form-label" for="name"
+            >Имя:
+                <input class="calc__form-input" type="text" id="name" required
+                /></label>
+            <label class="calc__form-label" for="email"
+            >Почта:
+                <input class="calc__form-input" type="email" id="email" required
+                /></label>
+            <label class="calc__form-label" for="phone"
+            >Телефон:
+                <input class="calc__form-input" type="text" id="phone" required
+                /></label>
+            <textarea
+                    class="calc__form-textarea"
+                    id="teleport"
+                    readonly="readonly"
+                    required
+            ></textarea>
+            <button
+                    class="calc__form-submit"
+                    type="submit"
+                    id="send-result"
+                    disabled
+            >
+                Отправить
+            </button>
+        </form>
+    </div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

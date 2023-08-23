@@ -10,6 +10,10 @@ const props = defineProps({
   label: {
     type: String,
     default: ''
+  },
+  language: {
+    type: String,
+    default: 'ru'
   }
 
 })
@@ -49,6 +53,7 @@ onMounted(() => {
   <div class="credit__label-text" v-if="isExistLabel">{{label}}</div>
   <VueDatePicker
     v-model="localDateTime"
+    :locale="language"
     select-text="Выбрать"
     cancel-text="Отмена"
     now-button-label="Сегодня"

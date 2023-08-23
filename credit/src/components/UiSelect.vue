@@ -25,11 +25,10 @@ const props = defineProps({
 
 
 const isOpen = ref(true);
-const currentOption = ref(null);
+// const currentOption = ref(null);
 const currentIndexOption = ref(null);
 
 const maxWidthSelectList = ref(null);
-
 
 const optionList = ref(null);
 const changeElement = ref(null);
@@ -37,14 +36,9 @@ const parentRef = ref(null);
 const selectRef = ref(null);
 
 
-
-
 const isExistLabel = computed(() => {
   return Boolean(props.label?.toString().length);
 });
-
-
-
 
 const isExistSelectList = computed(() => {
   return props.selectData.length
@@ -53,8 +47,6 @@ const isExistSelectList = computed(() => {
 const isShowArrow = computed(() => {
   return Boolean(props.selectData?.length > 1);
 });
-
-
 
 const maxWidthForChangeElement = computed(() => {
   return maxWidthSelectList.value
@@ -68,6 +60,10 @@ const maxWidthForOptionList = computed(() => {
     : null;
 });
 
+const currentOption = computed(() => {
+  return props.selectData[currentIndexOption.value]
+})
+
 watch(isOpen, (newValue) => {
   if (newValue) {
     nextTick(() => {
@@ -77,9 +73,7 @@ watch(isOpen, (newValue) => {
 });
 
 function initSelectData(eventType = "mounted") {
-    if (isExistSelectList.value) {
-      currentIndexOption.value = 0
-    }
+    currentIndexOption.value = 0
 
     changeSelect(
       props.selectData[currentIndexOption.value],
@@ -88,23 +82,22 @@ function initSelectData(eventType = "mounted") {
     );
 }
 
-
-
 function close() {
   isOpen.value = false;
 }
 
 function changeSelect(item, inx, eventType = "click") {
   currentIndexOption.value = inx;
-  currentOption.value = item;
   setTimeout(() => {
     changeValue(eventType);
   }, 100);
   close();
 }
 
-function changeValue(eventType = "click") {
-  emits("changedValue",  currentOption.value.selectValue);
+function changeValue() {
+  if (currentOption.value) {
+    emits("changedValue",  currentOption.value?.selectValue);
+  }
 }
 
 function updatedWidthSelect() {
@@ -137,7 +130,6 @@ function initSelect(eventType) {
 function toggleOpenClose() {
     isOpen.value = !isOpen.value;
 }
-
 
 useEventListener(window, "click", clickClose);
 

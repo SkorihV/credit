@@ -9,10 +9,6 @@ import {
 
 import {checkedValueOnVoid} from "@/servises/UtilityServices";
 
-// import { REGEXP_SPACES } from "@/constants/regexp";
-
-
-
 const emits = defineEmits(["changedValue"]);
 const props = defineProps({
   /**
@@ -91,6 +87,13 @@ const props = defineProps({
       return !isNaN(Number(value));
     },
   },
+  isDisabled: {
+    type: [Boolean, Number],
+    default: false,
+    validator(value) {
+      return value === false || value === true || value === 0 || value === 1;
+    },
+  }
 });
 
 const inputFocus = ref(false);
@@ -133,7 +136,7 @@ const localStep = computed(() => {
 });
 
 const showControlsButton = computed(() => {
-  return props.controls
+  return props.controls && !props.isDisabled
 });
 
 
@@ -426,6 +429,7 @@ onMounted(() => {
           :class="{
             error: isErrorClass,
           }"
+          :disabled="isDisabled"
           autocomplete="off"
         />
         <div

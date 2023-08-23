@@ -1,10 +1,10 @@
 <script setup>
 
-import {computed} from "vue";
+import {computed, onMounted, ref} from "vue";
 import {aroundCeil} from "@/servises/UtilityServices";
 
 const props = defineProps({
-  computedStartCreditSum: {
+  startCreditSum: {
     type: Number,
     default: null
   },
@@ -32,11 +32,67 @@ const props = defineProps({
     type: Number,
     default: null
   },
+  typeTime: {
+    type: String,
+    default: "year"
+  },
+  timeCreditMonth: {
+    type: Number,
+    default: 240
+  },
+  timeCreditYear: {
+    type: Number,
+    default: 5
+  },
   typeCredit: {
     type: String,
     default: 'A'
   },
+  nameTypeCredit: {
+    type: String,
+    default: 'Аннуитет'
+  },
+  labelTypeCredit: {
+    type: String,
+    default: 'A'
+  },
+  labelSum: {
+    type: String,
+    default: 'Сумма кредита'
+  },
+  labelCurrency: {
+    type: String,
+    default: 'Сумма первоначального взноса:'
+  },
+  labelPercent: {
+    type: String,
+    default: '% первоначального взноса:'
+  },
+  labelYear: {
+    type: String,
+    default: 'Срок кредита в годах:'
+  },
+  labelMonth: {
+    type: String,
+    default: 'Срок кредита в месяцах:'
+  },
+  labelInterestRate: {
+    type: String,
+    default: 'A'
+  },
+  interestRate: {
+    type: Number,
+    default: 1
+  },
+  otherLabels: {
+    type: Object,
+    default: () => {}
+  },
+
 })
+
+const formElement = ref(null);
+const teleportField = ref(null);
 
 /**
  * ПЕРЕПЛАТА = ОБЩАЯ_СУММА_КРЕДИТА - СУММА_КРЕДИТА
@@ -47,6 +103,72 @@ const overpaymentAmount = computed(() => {
   return aroundCeil(props.totalData?.pay - props.totalData?.mainDebt, 100);
 })
 
+const isTeleportExist = computed(() => {
+  return Boolean(teleportField.value)
+})
+
+
+function findForm() {
+  const form = document.querySelector("#calc__form-for-result");
+  formElement.value = form ? form : null;
+
+}
+
+function findTeleportField() {
+  if (formElement.value) {
+    const field = formElement.value.querySelector("#teleport");
+    teleportField.value = field ? field : null;
+  }
+}
+
+function setReadOnlyForTeleportField() {
+  if (teleportField.value) {
+    findTeleportField();
+  }
+  if (teleportField.value) {
+    teleportField.value.readOnly = true;
+  }
+}
+
+const teleportResultText = computed(() => {
+  let result = ''
+  result += `${props.labelSum} ${props.startCreditSum} \n`
+
+  if (props.enabledFirstPayment) {
+    result += `${props.labelCurrency} ${props.firstPaymentCurrency}\n`
+    result += `${props.labelPercent} ${props.firstPaymentPercent}\n`
+  }
+
+  if (props.typeTime === 'year') {
+    result += `${props.labelYear} ${props.timeCreditYear} \n`
+  } else {
+    result += `${props.labelMonth} ${props.timeCreditMonth} \n`
+  }
+  result += `${props.labelInterestRate} ${props.interestRate} \n`
+  result += `${props.labelTypeCredit} ${props.nameTypeCredit} \n`
+
+  if (props.typeCredit === "A") {
+    result += `${props.otherLabels.pay} (${props.nameTypeCredit}):  ${props.monthlyPaymentAnnuity} \n`
+  } else {
+    result += `${props.otherLabels.pay} (${props.nameTypeCredit}): ${props.monthlyPaymentDifferentiated} \n`
+  }
+
+
+  result += `${props.otherLabels.totalPayment} ${props.totalData.pay} \n`
+  result += `${props.otherLabels.percent}  ${overpaymentAmount.value} \n`
+
+
+  return result
+})
+
+
+onMounted(() => {
+  setTimeout(() => {
+    findForm();
+    findTeleportField();
+    setReadOnlyForTeleportField()
+  }, 200)
+})
 
 </script>
 
@@ -54,10 +176,10 @@ const overpaymentAmount = computed(() => {
   <div class="credit__info-block-wrapper">
     <div class="credit__info-block-item">
       <div class="credit__info-block-title">
-        Сумма кредита:
+        {{ labelSum }}
       </div>
       <div class="credit__info-block-value">
-        {{computedStartCreditSum}}
+        {{startCreditSum}}
       </div>
     </div>
     <div class="credit__info-block-item" v-if="typeCredit === 'A'">
@@ -78,7 +200,7 @@ const overpaymentAmount = computed(() => {
     </div>
     <div class="credit__info-block-item">
       <div class="credit__info-block-title">
-        Общая сумма платежей:
+        {{otherLabels?.totalPayment}}
       </div>
       <div class="credit__info-block-value">
         {{totalData.pay}}
@@ -92,23 +214,49 @@ const overpaymentAmount = computed(() => {
         {{overpaymentAmount}}
       </div>
     </div>
-    <div class="credit__info-block-item" v-if="enabledFirstPayment">
+
+
+
+    <div class="credit__info-block-item" v-if="typeTime === 'year'">
       <div class="credit__info-block-title">
-        Сумма первоначального взноса:
+        {{labelYear}}
       </div>
       <div class="credit__info-block-value">
-        {{firstPaymentCurrency}}
+        {{timeCreditYear}}
       </div>
     </div>
-    <div class="credit__info-block-item" v-if="enabledFirstPayment">
+    <div class="credit__info-block-item" v-if="typeTime === 'month'">
       <div class="credit__info-block-title">
-        % первоначального взноса:
+        {{labelMonth}}
       </div>
       <div class="credit__info-block-value">
-        {{firstPaymentPercent}} %
+        {{timeCreditMonth}}
       </div>
     </div>
+
+
+    <template v-if="enabledFirstPayment">
+      <div class="credit__info-block-item" >
+        <div class="credit__info-block-title">
+          {{labelCurrency}}
+        </div>
+        <div class="credit__info-block-value">
+          {{firstPaymentCurrency}}
+        </div>
+      </div>
+      <div class="credit__info-block-item">
+        <div class="credit__info-block-title">
+          {{labelPercent}}
+        </div>
+        <div class="credit__info-block-value">
+          {{firstPaymentPercent}}
+        </div>
+      </div>
+     </template>
   </div>
+  <teleport v-if="isTeleportExist" to="#teleport">
+    {{ teleportResultText }}
+  </teleport>
 </template>
 
 <style scoped>

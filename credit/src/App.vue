@@ -24,8 +24,8 @@ const firstPaymentCurrency = ref(500000) // первоначальный взн�
 const firstPaymentPercent = ref(10) // первоначальный взнос в процентах
 
 const firstPaymentType = ref('currency') // тип первоначального взноса
-const timeCreditYear = ref(20) // срок кредита в годах
-const timeCreditMonth = ref(20) // срок кредита в месяцах
+const timeCreditYear = ref(5) // срок кредита в годах
+const timeCreditMonth = ref(240) // срок кредита в месяцах
 const typeTime = ref('year') // тип времени
 
 const interestRate = ref(9.6) //процентная ставка
@@ -81,65 +81,76 @@ const earlyRepaymentData = ref([]) // данные для досрочного �
 let enabledEarlyRepayment = true
 /**
  * both, annuity, differentiated
- * @type {string}
+ * @type {Ref<UnwrapRef<string>>}
  */
-let enabledCreditType = 'both'
+const enabledCreditType = ref('both')
 let enabledChangeFirstPay = true
 let enabledFirstPayment = true
-let currency = "руб"
+let currency = ref("руб")
 
-const radioDataTypeCredit = [
-  {
-    radioLabel: "аннуитетный",
-    radioValue: "A"
-  },
-  {
-    radioLabel: "дифференцированный",
-    radioValue: "D"
-  }
-]
+const radioDataTypeCredit = computed(() => {
+  return  [
+    {
+      radioLabel: inputOptions.value?.creditType?.annuity,
+      radioValue: "A"
+    },
+    {
+      radioLabel: inputOptions.value?.creditType?.differentiated,
+      radioValue: "D"
+    }
+  ]
+})
+const nameTypeCredit = computed(() => {
+  return currentTypeCredit.value === "A" ? inputOptions.value?.creditType?.annuity : inputOptions.value?.creditType?.differentiated
+})
 
 const localRadioDataTypeCredit = computed(() => {
-  if (enabledCreditType === 'annuity') {
-    return radioDataTypeCredit.filter(item => item.radioValue === 'A')
-  } else if (enabledCreditType === 'differentiated') {
-    return radioDataTypeCredit.filter(item => item.radioValue === 'D')
+  if (enabledCreditType.value === 'annuity') {
+    return radioDataTypeCredit.value.filter(item => item.radioValue === 'A')
+  } else if (enabledCreditType.value === 'differentiated') {
+    return radioDataTypeCredit.value.filter(item => item.radioValue === 'D')
   } else {
-    return radioDataTypeCredit
+    return radioDataTypeCredit.value
   }
 })
 
-const selectDataTypeTime = [
-  {
-    selectLabel: "Год",
-    selectValue: "year"
-  },
-  {
-    selectLabel: "Месяц",
-    selectValue: "month"
-  }
-]
-const selectDataFirstPayType = [
-  {
-    selectLabel: currency,
-    selectValue: "currency"
-  },
-  {
-    selectLabel: "%",
-    selectValue: "percent"
-  }
-]
+const selectDataTypeTime = computed(() => {
+  return [
+    {
+      selectLabel: inputOptions?.value?.timeCreditYear?.labelForSelect,
+      selectValue: "year"
+    },
+    {
+      selectLabel: inputOptions?.value?.timeCreditMonth?.labelForSelect,
+      selectValue: "month"
+    }
+  ]
+  })
+const selectDataFirstPayType = computed(() => {
+  return [
+    {
+      selectLabel: currency.value,
+      selectValue: "currency"
+    },
+    {
+      selectLabel: "%",
+      selectValue: "percent"
+    }
+  ]
+})
 
-const selectDataPrepaymentType = [
-  {
-    selectLabel: "Срок кредита",
-    selectValue: "month"
-  },
-  {
-    selectLabel: "Сумма оплаты",
-    selectValue: "pay"
-  }
-]
+const selectDataPrepaymentType = computed(() => {
+  return [
+    {
+      selectLabel: inputOptions?.value?.earlyRepayment?.repaymentTypeTime,
+      selectValue: "month"
+    },
+    {
+      selectLabel: inputOptions?.value?.earlyRepayment?.repaymentTypeSum,
+      selectValue: "pay"
+    }
+  ]
+})
 
 
 /**
@@ -285,7 +296,7 @@ function initCalculate() {
         currentSumCredit = aroundCeil(currentSumCredit - mainDebt - earlyRepayment, 100 )
       }
 
-      balance = currentSumCredit
+      balance = currentSumCredit >= 0 ? currentSumCredit : 0
       // percent = balance === 0 && mainDebt > pay ? 0 : percent
 
     } else if (currentTypeCredit.value === "D") {
@@ -294,7 +305,7 @@ function initCalculate() {
       mainDebt = getMonthlyDebtRepaymentD()
       pay = percent + mainDebt
       currentSumCredit = aroundCeil(currentSumCredit - mainDebt - earlyRepayment, 100 )
-      balance = currentSumCredit
+      balance = currentSumCredit >= 0 ? currentSumCredit : 0
     }
 
     tableData.value.push({
@@ -314,7 +325,7 @@ function initCalculate() {
 
     beforeIsEarlyRepayment = Boolean(earlyRepayment > 0)
 
-    if (balance < 0 ) {
+    if (balance <= 0 ) {
       break
     }
   }
@@ -497,7 +508,6 @@ onMounted(async () => {
     }
   }
 
-
   startCreditSum.value = inputOptions.value?.startSum?.startCreditSum
 
   firstPaymentCurrency.value = inputOptions.value?.firstPaymentCurrency?.firstPaymentCurrency
@@ -507,13 +517,12 @@ onMounted(async () => {
   interestRate.value = inputOptions.value?.interestRate?.interestRate
 
 
-
-  enabledEarlyRepayment = Boolean(inputOptions.value?.enabledEarlyRepayment)
-  enabledCreditType = Boolean(inputOptions.value?.enabledCreditType)
+  enabledEarlyRepayment = Boolean(inputOptions.value?.earlyRepayment?.enabledEarlyRepayment)
+  enabledCreditType.value = inputOptions.value?.creditType?.enabledCreditType
   enabledChangeFirstPay = Boolean(inputOptions.value?.enabledChangeFirstPay)
   enabledFirstPayment = Boolean(inputOptions.value?.enabledFirstPayment)
   roundUpPaymentSum = parseFloat(inputOptions.value?.roundUpPaymentSum) === 0 ? 1 : parseFloat(inputOptions.value?.roundUpPaymentSum)
-  currency = inputOptions.value?.currency
+  currency.value = inputOptions.value?.currency
 
   updatePercentCurrency()
   initCalculate()
@@ -524,18 +533,6 @@ onMounted(async () => {
 
 <template>
   <div class="credit__main-wrapper">
-      <result-info-block
-        :enabled-first-payment="enabledFirstPayment"
-        :first-payment-currency="firstPaymentCurrency"
-        :first-payment-percent="firstPaymentPercent"
-        :first-payment-type="firstPaymentType"
-        :computed-start-credit-sum="computedStartCreditSum"
-        :monthly-payment-annuity="monthlyPaymentAnnuity"
-        :monthly-payment-differentiated="monthlyPaymentDifferentiated"
-        :total-data="totalData"
-        :type-credit="currentTypeCredit"
-      />
-
     <div class="credit__data-wrapper">
       <UiInput
         :label="inputOptions?.startSum?.title"
@@ -573,7 +570,7 @@ onMounted(async () => {
         :max="inputOptions?.firstPaymentPercent?.max"
         :min="inputOptions?.firstPaymentPercent?.min"
         :step="inputOptions?.firstPaymentPercent?.step"
-        :discrete-step="nputOptions?.firstPaymentPercent?.discreteStep"
+        :discrete-step="inputOptions?.firstPaymentPercent?.discreteStep"
         @changed-value="changeFirstPaymentPercent"
       />
       <UiSelect
@@ -587,7 +584,7 @@ onMounted(async () => {
         v-if="typeTime === 'year'"
         :label="inputOptions?.timeCreditYear?.title"
         :controls="inputOptions?.timeCreditYear?.controls"
-        data-type="onlyInteger"
+        data-type="onlyNumber"
         :input-value="timeCreditYear"
         :max="inputOptions?.timeCreditYear?.max"
         :min="inputOptions?.timeCreditYear?.min"
@@ -623,14 +620,15 @@ onMounted(async () => {
         :min="inputOptions?.interestRate?.min"
         :step="inputOptions?.interestRate?.step"
         :discrete-step="inputOptions?.interestRate?.discreteStep"
-        unit="% годовых"
+        :unit="inputOptions?.interestRate?.unit"
+        :is-disabled="inputOptions?.interestRate?.disabled"
         @changed-value="changeInterestRate"
       />
     </div>
 
     <div class="credit__data-wrapper">
       <UiRadio
-        label="Тип платежей:"
+        :label="inputOptions?.creditType?.title"
         :radioData="localRadioDataTypeCredit"
         @changed-value="changeTypeCredit"
       />
@@ -640,6 +638,7 @@ onMounted(async () => {
       <UiDatePicker
         :date-time="localDateTime"
         label="Дата первого платежа:"
+        :language="inputOptions?.datepickerLanguage"
         @change-timestemp="changeTimestemp"
       />
 
@@ -647,18 +646,19 @@ onMounted(async () => {
 
     <template v-if="enabledEarlyRepayment">
       <div class="credit__data-wrapper">
-        <button class="credit__button" @click="addEarlyRepayment">+ Досрочное погашение</button>
+        <button class="credit__button" @click="addEarlyRepayment">{{inputOptions?.earlyRepayment?.btnRepayment}}</button>
       </div>
       <div class="credit__data-wrapper" v-if="isEarlyRepayment && currentTypeCredit === 'A'">
         <ui-select
           :select-data="selectDataPrepaymentType"
-          label="Тип досрочного погашения:"
+          :label="inputOptions?.earlyRepayment?.labelRepaymentType"
           @changed-value="chanePrepaymentType"
         />
       </div>
       <div class="credit__data-wrapper" v-for="(data, idx) in earlyRepaymentData" :key="idx">
         <UiDatePicker
           :date-time="data.timestemp"
+          :language="inputOptions?.datepickerLanguage"
           @change-timestemp="changeDateEarlyRepayment({index: idx, timestemp: $event, value: null})"
       />
         <UiInput
@@ -672,16 +672,44 @@ onMounted(async () => {
           :controls="inputOptions?.earlyRepayment?.controls"
         >
           <template #button>
-            <button class="credit__button credit__button_remove" @click="removeDateEarlyRepayment(idx)" >X</button>
+            <div class="credit__button credit__button_remove" @click="removeDateEarlyRepayment(idx)" >X</div>
           </template>
         </UiInput>
       </div>
     </template>
 
+    <result-info-block
+      :enabled-first-payment="enabledFirstPayment"
+      :first-payment-currency="firstPaymentCurrency"
+      :first-payment-percent="firstPaymentPercent"
+      :type-time="typeTime"
+      :first-payment-type="firstPaymentType"
+      :start-credit-sum="startCreditSum"
+      :monthly-payment-annuity="monthlyPaymentAnnuity"
+      :monthly-payment-differentiated="monthlyPaymentDifferentiated"
+      :total-data="totalData"
+      :type-credit="currentTypeCredit"
+      :label-type-credit="inputOptions?.creditType?.title"
+      :nameTypeCredit="nameTypeCredit"
+
+      :timeCreditMonth="timeCreditMonth"
+      :timeCreditYear="timeCreditYear"
+      :labelSum="inputOptions?.startSum?.title"
+      :labelCurrency="inputOptions?.firstPaymentCurrency?.title"
+      :labelPercent="inputOptions?.firstPaymentPercent?.title"
+      :labelYear="inputOptions?.timeCreditYear?.title"
+      :labelMonth="inputOptions?.timeCreditMonth?.title"
+      :labelInterestRate="inputOptions?.interestRate?.title"
+      :interest-rate="interestRate"
+      :other-labels="inputOptions?.otherLabels"
+
+    />
       <UiTableData
+        :currency="currency"
         :table-data="tableData"
         :total-data="totalData"
         :is-early-repayment="isEarlyRepayment"
+        :other-labels="inputOptions?.otherLabels"
       />
   </div>
 
@@ -690,88 +718,59 @@ onMounted(async () => {
 
 <style lang="scss">
 
-$c_base_title: #000000;
+//$c_base_text: var(--c_base_text);
+//$c_base_text_hover: var(--c_base_text_hover);
+//$c_base_text_selected: var(--c_base_text_selected);
+
+
+//$c_base_bg_color: var(--c_base_bg_color);
+//$c_base_bg_color_hover: var(--c_base_bg_color_hover);
+//$c_base_bg_color_selected: var(--c_base_bg_color_selected);
+
+
+//$c_base_border_color: var(--c_base_border_color);
+//$c_base_border_color_hover: var(--c_base_border_color_hover);
+//$c_base_border_color_selected: var(--c_base_border_color_selected);
+
+//$c_base_error_color: var(--c_base_error_color);
+
+
+//$c_base_border_radius : var(--c_base_border_radius);
+//$c_base_border_width : var(--c_base_border_width);
+
+
+$c_base_text: #000000;
+$c_base_text_hover: #ff5e00;
+$c_base_text_selected: #ffffff;
+
+
+$c_base_bg_color: #ffffff;
+$c_base_bg_color_hover: #ffffff;
+$c_base_bg_color_selected: #ff5e00;
+
+
+$c_base_border_color: #ccc;
+$c_base_border_color_hover: #ff5e00;
+$c_base_border_color_selected: #ff5e00;
+
 $c_base_error_color: #e80000;
-$c_base_error_bg: #ffffff;
-$c_base_error_border: #e80000;
-$c_base_error_border_radius: 5px;
-$c_base_error_border_width: 1px;
-
-$c_base_button_text_color: #ffffff;
-$c_base_button_text_color_hover: #ffffff;
-
-$c_base_button_bg: #464657;
-$c_base_button_bg_hover: #ff5e00;
-
-$c_base_button_border: #464657;
-$c_base_button_border_hover: #ff5e00;
-
-$c_base_button_border_radius: 5px;
-$c_base_button_border_width: 1px;
 
 
+$c_base_border_radius: 5px;
+$c_base_border_width: 1px;
 
-$c_decor_text_default: #000000;
-$c_decor_text_hover: #ff5e00;
-$c_decor_text_selected: #ffffff;
-
-$c_decor_bg_color: #f9f9f9;
-$c_decor_bg_color_hover: #f9f9f9;
-$c_decor_bg_color_selected: #ff6531;
-
-$c_decor_border_color: #cccccc;
-$c_decor_border_color_hover: #ff6531;
-$c_decor_border_color_selected: #ff6531;
-$c_decor_border_radius: 5px;
-$c_decor_border_width: 1px;
-
-
-
-
-$c_element_text_default: #000000;
-$c_element_text_hover: #ff5e00;
-$c_element_text_selected: #ffffff;
-
-$c_element_bg_color: #f9f9f9;
-$c_element_bg_color_hover: #f9f9f9;
-$c_element_bg_color_selected: #ff6531;
-
-$c_element_border_color: #cccccc;
-$c_element_border_color_hover: #ff6531;
-$c_element_border_color_selected: #ff6531;
-$c_element_border_radius: 5px;
-$c_element_border_width: 1px;
-
-$c_element_input_color: #f9f9f9;
-$c_element_range_color: #cccccc;
-
-
-@mixin style-decor-border-radius {
-  border-radius: $c_decor_border_radius;
-}
 
 @mixin style-title-main {
   font-size: 17px;
   line-height: 20px;
-  color: $c_base_title;
+  color: $c_base_text;
 }
 
-@mixin style-label-sub {
-  font-size: 12px;
-  line-height: 14px;
-  color: $c_base_title;
-}
 
 @mixin transition {
   transition: all 0.2s ease-in-out;
 }
 
-@mixin style-prompt-absolute-shift {
-  position: absolute;
-  top: 0;
-  right: 0;
-  margin: 5px;
-}
 
 @mixin style-element-main-wrapper {
   display: flex;
@@ -784,29 +783,6 @@ $c_element_range_color: #cccccc;
     align-items: flex-start;
   }
 }
-
-@mixin style-horizontal-elements {
-  flex-direction: row;
-  flex-wrap: wrap;
-  > .calc__template-main-wrapper {
-    width: auto;
-    flex: 0 1 auto;
-    &.isRange {
-      flex: 1 1 auto;
-    }
-  }
-
-  > .calc__template-main-wrapper {
-    padding: 0 10px;
-    &:first-child {
-      padding-left: 0;
-    }
-    &:last-child {
-      padding-right: 0;
-    }
-  }
-}
-
 
 #credit_calculator {
   .dp__main {
@@ -850,13 +826,14 @@ $c_element_range_color: #cccccc;
     margin-left: 5px;
     font-size: 17px;
     line-height: 20px;
-    color: $c_element_text_default;
+    color: $c_base_text;
   }
 
   &__info-block {
     &-wrapper {
       display: flex;
       flex-direction: column;
+      margin: 10px 0;
     }
     &-item {
       display: flex;
@@ -868,28 +845,26 @@ $c_element_range_color: #cccccc;
     }
   }
 
-
-
   &__button {
-    @include style-decor-border-radius;
-    background-color: $c_decor_bg_color_selected;
-    color: $c_decor_text_selected;
+    border-radius: $c_base_border_radius;
+    background-color: $c_base_bg_color;
+    border: solid $c_base_border_width $c_base_border_color;
+    color: $c_base_text;
     font-weight: 900;
     font-size: 17px;
     line-height: 23px;
     display: flex;
     align-items: center;
     text-align: center;
-    text-transform: uppercase;
     padding: 21px 25px;
-    border: none;
     &:hover{
       cursor: pointer;
-      background-color: $c_decor_bg_color_hover;
-      color: $c_decor_text_hover;
+      background-color: $c_base_bg_color_hover;
+      color: $c_base_text_hover;
     }
     &_remove {
-      background: red;
+      background: $c_base_bg_color_selected;
+      color: $c_base_text_selected;
       padding: 18px 10px;
     }
     @media all and (max-width: 480px) {
@@ -905,10 +880,11 @@ $c_element_range_color: #cccccc;
     margin: 50px auto;
   }
   &__caption {
-    background: $c_decor_bg_color;
-    border-top: 1px solid $c_decor_text_default;
+    background: $c_base_bg_color;
+    border-top: 1px solid $c_base_text;
     font-weight: bold;
     padding: 5px;
+    text-align: center;
   }
   &__thead {
     position: sticky;
@@ -917,24 +893,26 @@ $c_element_range_color: #cccccc;
   &__th {
     font-weight: bold;
     padding: 5px;
-    background: $c_decor_bg_color_selected;
-    border: 1px solid $c_decor_text_default;
-    color: $c_decor_text_selected
+    background: $c_base_bg_color_selected;
+    border: $c_base_border_width solid $c_base_text;
+    color: $c_base_text_selected
   }
 
   &__td {
     padding: 5px 10px;
-    border: 1px solid $c_decor_text_default;
+    border: $c_base_border_width solid $c_base_text;
     text-align: left;
   }
-
-
 
   &__table tbody .credit__tr:nth-child(odd){
     background: #fff;
   }
   &__table tbody .credit__tr:nth-child(even){
-    background: $c_decor_bg_color;
+    background: $c_base_bg_color;
+  }
+  &__table tbody .credit__tr:last-child {
+    background: $c_base_bg_color_selected;
+    color: $c_base_text_selected;
   }
 
   &__table tr td:first-child, &__table tr th:first-child {
@@ -943,8 +921,6 @@ $c_element_range_color: #cccccc;
   &__table tr td:last-child, &__table tr th:last-child {
     border-right: none;
   }
-
-
 
   &__dp-custom-input {
     padding-top: 18px;
@@ -987,20 +963,20 @@ $c_element_range_color: #cccccc;
       line-height: 20px;
       padding: 20px 35px;
       max-width: 304px;
-      background: $c_element_input_color;
-      color: $c_element_text_default;
-      border: $c_element_border-width solid $c_element_border_color;
+      background: $c_base_bg_color;
+      color: $c_base_text;
+      border: $c_base_border-width solid $c_base_border_color;
       text-align: center;
-      border-radius: $c_element_border_radius;
+      border-radius: $c_base_border_radius;
       @media all and (max-width: 480px) {
         padding: 10px 15px;
       }
       &:focus,
       &:hover {
         outline: none;
-        border-color: $c_element_border_color_hover;
-        background: $c_element_bg_color_hover;
-        color: $c_element_text_hover;
+        border-color: $c_base_border_color_hover;
+        background: $c_base_bg_color_hover;
+        color: $c_base_text_hover;
       }
       &.number {
         max-width: 150px;
@@ -1022,7 +998,7 @@ $c_element_range_color: #cccccc;
         display: flex;
         justify-content: center;
         align-items: center;
-        color: $c_base_title;
+        color: $c_base_text;
         font-size: 28px;
         line-height: 26px;
         font-weight: 600;
@@ -1057,9 +1033,9 @@ $c_element_range_color: #cccccc;
       align-items: center;
       justify-content: center;
       padding: 20px 30px;
-      background-color: $c_element_bg_color;
-      border-radius: $c_element_border_radius;
-      border: $c_element_border_width solid $c_element_border_color;
+      background-color: $c_base_bg_color;
+      border-radius: $c_base_border_radius;
+      border: $c_base_border_width solid $c_base_border_color;
       cursor: pointer;
       @include transition;
       gap: 8px;
@@ -1074,17 +1050,17 @@ $c_element_range_color: #cccccc;
 
 
       &:hover {
-        background-color: $c_element_bg_color_hover;
-        border-color: $c_element_border_color_hover;
+        background-color: $c_base_bg_color_hover;
+        border-color: $c_base_border_color_hover;
         .calc__radio-name{
-          color: $c_element_text_hover;
+          color: $c_base_text_hover;
         }
       }
       &.checked {
-        background-color: $c_element_bg_color_selected;
-        border-color: $c_element_border_color_selected;
+        background-color: $c_base_border_color_selected;
+        border-color: $c_base_border_color_selected;
         .calc__radio-name {
-          color: $c_element_text_selected;
+          color: $c_base_text_selected;
         }
       }
       &.error {
@@ -1114,7 +1090,7 @@ $c_element_range_color: #cccccc;
     &-name {
       font-size: 16px;
       line-height: 20px;
-      color: $c_element_text_default;
+      color: $c_base_text;
     }
   }
 
@@ -1127,17 +1103,17 @@ $c_element_range_color: #cccccc;
       }
       &.open {
         .calc__select-arrow {
-          border-color: $c_element_text_default;
+          border-color: $c_base_text;
           transform: rotate(-135deg);
           -webkit-transform: rotate(-135deg);
         }
         .calc__select-change-item {
-          border-color: $c_element_border_color;
+          border-color: $c_base_border_color;
           border-bottom-left-radius: 0;
           border-bottom-right-radius: 0;
         }
         .calc__select-option-wrapper {
-          border-color: $c_element_border_color;
+          border-color: $c_base_border_color;
         }
       }
       @media all and (max-width: 480px) {
@@ -1170,10 +1146,10 @@ $c_element_range_color: #cccccc;
         }
       }
       &-item {
-        color: $c_element_text_default;
-        border-radius: $c_element_border_radius;
-        border: $c_element_border_width solid $c_element_border_color;
-        background-color: $c_element_bg_color;
+        color: $c_base_text;
+        border-radius: $c_base_border_radius;
+        border: $c_base_border_width solid $c_base_border_color;
+        background-color: $c_base_bg_color;
         padding: 20px 50px 20px 40px;
         font-weight: 400;
         font-size: 16px;
@@ -1188,18 +1164,18 @@ $c_element_range_color: #cccccc;
           padding: 10px 50px 10px 10px;
         }
         &:hover {
-          border-color: $c_element_border_color_hover;
-          background-color: $c_element_bg_color_hover;
-          color: $c_element_text_hover;
+          border-color: $c_base_border_color_hover;
+          background-color: $c_base_bg_color_hover;
+          color: $c_base_text_hover;
           .calc__select-arrow {
-            border-color: $c_element_text_hover;
+            border-color: $c_base_text_hover;
           }
         }
         .calc__select-arrow {
           width: 10px;
           height: 10px;
-          border: solid $c_element_text_default;
-          border-width: 0 $c_element_border_width $c_element_border_width 0;
+          border: solid $c_base_text;
+          border-width: 0 $c_base_border_width $c_base_border_width 0;
           display: inline-block;
           margin-left: auto;
           flex: 0 0 auto;
@@ -1215,19 +1191,19 @@ $c_element_range_color: #cccccc;
         display: flex;
         flex-direction: column;
         position: absolute;
-        border-bottom-left-radius: $c_element_border-radius;
-        border-bottom-right-radius: $c_element_border-radius;
-        background: $c_decor_bg_color;
+        border-bottom-left-radius: $c_base_border-radius;
+        border-bottom-right-radius: $c_base_border-radius;
+        background: $c_base_bg_color;
         z-index: 99;
         left: 50%;
         overflow: hidden;
         transform: translateX(-50%);
-        border-left: $c_element_border_width solid
-        $c_element_border_color_selected;
-        border-right: $c_element_border_width solid
-        $c_element_border_color_selected;
-        border-bottom: $c_element_border_width solid
-        $c_element_border_color_selected;
+        border-left: $c_base_border_width solid
+        $c_base_border_color_selected;
+        border-right: $c_base_border_width solid
+        $c_base_border_color_selected;
+        border-bottom: $c_base_border_width solid
+        $c_base_border_color_selected;
       }
       &-list {
         display: flex;
@@ -1237,7 +1213,7 @@ $c_element_range_color: #cccccc;
         max-height: 300px;
       }
       &-item {
-        background-color: $c_element_bg_color;
+        background-color: $c_base_bg_color;
         display: flex;
         align-items: center;
         gap: 20px;
@@ -1251,14 +1227,111 @@ $c_element_range_color: #cccccc;
           font-size: 16px;
           line-height: 20px;
           text-align: start;
-          color: $c_element_text_default;
+          color: $c_base_text;
         }
         &:hover {
-          background-color: $c_element_bg_color_hover;
+          background-color: $c_base_bg_color_hover;
           .calc__select-option-item-text {
-            color: $c_element_text_hover;
+            color: $c_base_text_hover;
           }
         }
+      }
+    }
+  }
+}
+
+.calc__form-for-result {
+  textarea {
+    &#teleport {
+      //display: none;
+    }
+  }
+}
+
+.calc__form-for-result-style {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  .title {
+    color: $c_base_text;
+    font-size: 16px;
+    line-height: 20px;
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+
+    .field-title {
+      color: $c_base_text;
+      font-size: 16px;
+      line-height: 20px;
+    }
+
+    label {
+      color: $c_base_text;
+    }
+    li {
+      list-style: none;
+    }
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"] {
+      border-radius: $c_base_border_radius;
+      outline: none;
+      border-width: 2px;
+      border-style: solid;
+      font-size: 16px;
+      line-height: 20px;
+      color: $c_base_text;
+      min-height: 60px;
+      padding: 20px 35px;
+      width: 100%;
+      &:focus,
+      &:hover {
+        border-color: $c_base_border_color_hover;
+      }
+    }
+    textarea {
+      border-radius: $c_base_border_radius;
+      font-size: 16px;
+      line-height: 20px;
+      color: $c_base_text;
+      padding: 20px 35px;
+      outline: none;
+      border-width: 2px;
+      border-style: solid;
+      width: 100%;
+      &:focus,
+      &:hover {
+        border-color: $c_base_border_color_hover;
+      }
+      &#teleport {
+        //display: none;
+      }
+    }
+    button {
+      border-radius: $c_base_border_radius;
+      background-color: $c_base_bg_color_selected;
+      color: $c_base_text_selected;
+      font-weight: 900;
+      font-size: 17px;
+      line-height: 23px;
+      display: flex;
+      align-items: center;
+      text-align: center;
+      text-transform: uppercase;
+      padding: 21px 25px;
+      border: none;
+      cursor: not-allowed;
+      &:hover:enabled {
+        cursor: pointer;
+        background-color: $c_base_bg_color_hover;
+        color: $c_base_text_hover;
       }
     }
   }
