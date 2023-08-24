@@ -3,7 +3,7 @@
 import VueDatePicker from "@vuepic/vue-datepicker";
 import {computed, onMounted, ref, watch} from "vue";
 
-const emits = defineEmits(['changeTimestemp'])
+const emits = defineEmits(['changeTimestamp'])
 
 const props = defineProps({
   dateTime: {},
@@ -33,14 +33,14 @@ function format(date) {
 watch(localDateTime, (newTime) => {
   if (newTime === null) {
     localDateTime.value = new Date(Date.now())
-    changeTimestemp(localDateTime.value.getTime())
+    changeTimestamp(localDateTime.value.getTime())
   } else {
-    changeTimestemp(newTime.getTime())
+    changeTimestamp(newTime.getTime())
   }
 })
 
-function changeTimestemp(value) {
-  return emits('changeTimestemp', value)
+function changeTimestamp(value) {
+  return emits('changeTimestamp', value)
 }
 
 onMounted(() => {

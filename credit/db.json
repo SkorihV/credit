@@ -2,12 +2,12 @@
   "calculatorOptions": {
     "enabledFirstPayment": true,
     "enabledChangeFirstPay": true,
-    "roundUpPaymentSum": "0",
+    "roundUpPaymentSum": 1,
     "currency": "руб",
     "datepickerLanguage": "ru",
     "startSum": {
       "title": "Сумма кредита:",
-      "startCreditSum": 500000,
+      "startCreditSum": 1500000,
       "min": 50000,
       "max": 10000000,
       "step": 1000,
@@ -17,7 +17,7 @@
     "firstPaymentCurrency": {
       "title": "Первоначальный взнос:",
       "firstPaymentCurrency": 50000,
-      "min": 10000,
+      "min": 0,
       "max": 10000000,
       "step": 1000,
       "controls": true,
@@ -26,7 +26,7 @@
     "firstPaymentPercent": {
       "title": "Первоначальный взнос в %:",
       "firstPaymentPercent": 10,
-      "min": 10,
+      "min": 0,
       "max": 90,
       "step": 0.1,
       "controls": true,
@@ -44,7 +44,7 @@
     },
     "timeCreditYear": {
       "title": "Срок кредита в годах:",
-      "timeCreditYear": 5,
+      "timeCreditYear": 20,
       "min": 1,
       "max": 50,
       "step": 1,
@@ -54,13 +54,13 @@
     },
     "interestRate": {
       "title": "Процентная ставка:",
-      "interestRate": 9.8,
+      "interestRate": 9.6,
       "min": 1,
       "max": 50,
       "step": 0.1,
       "controls": true,
       "discreteStep": true,
-      "disabled": true,
+      "disabled": false,
       "unit": "% годовых"
     },
     "creditType": {
@@ -92,7 +92,8 @@
       "mainDebt": "Основной долг",
       "balance": "Остаток долга",
       "repayment": "Досрочное погашение",
-      "btnToggleTable": "Показать расчет"
+      "btnToggleTable": "Показать таблицу платежей",
+      "totalPayment": "Общая сумма платежа:"
     },
     "textAbove": "",
     "textAfter": "",

@@ -62,5 +62,5 @@ export {
   decimalAdjust,
   checkedValueOnVoid,
   makeMultiple,
-    aroundCeil
+  aroundCeil
 };

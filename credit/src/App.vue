@@ -73,6 +73,11 @@ const totalData = reactive({
   },
 })
 
+/**
+ * степень округления для общей ставки
+ * @type {number}
+ */
+const roundupForTotal = 1000000
 let roundUpPaymentSum = 100 // сумма округления при расчетах
 const prepaymentType = ref('month')
 const earlyRepaymentData = ref([]) // данные для досрочного погашения
@@ -164,22 +169,22 @@ const amountMonth = computed(() => {
     }
     return timeCreditMonth.value;
   })
+
 /**
  * ЕЖЕМЕСЯЧНАЯ_СТАВКА = ПРОЦЕНТНАЯ_СТАВКА_ГОДОВЫХ / 12 / 100
  * ежемесячная процентная ставка по кредиту
  * @type {ComputedRef<number>}
  */
 const monthRate = computed(() => {
-  return interestRate.value / 12 / 100
+  return aroundCeil(aroundCeil(interestRate.value, 100) / 12 / 100, roundupForTotal)
 })
-
 
 /**
  * ОБЩАЯ_СТАВКА = (1 + ЕЖЕМЕСЯЧНАЯ_СТАВКА) ^ СРОК_ИПОТЕКИ_МЕСЯЦЕВ
  * @type {ComputedRef<number>}
  */
 const totalRate = computed(() => {
-  return aroundCeil(Math.pow( (1 + monthRate.value), amountMonth.value), 1000000)
+  return aroundCeil(Math.pow( (1 + monthRate.value), amountMonth.value), roundupForTotal)
 })
 
 /**
@@ -266,13 +271,15 @@ function initCalculate() {
   let localMonthlyPaymentAnnuity = monthlyPaymentAnnuity.value
   let date = new Date(localDateTime.value)
   let beforeIsEarlyRepayment = false;
+  let beforeEarlyRepayment = 0
+  let earlyRepayment = 0
 
   for (let i = 1; i <= amountMonth.value; i++) {
     let pay = 0
     let percent = 0
     let mainDebt = 0
     let balance = 0
-    let earlyRepayment = 0
+
     if (isEarlyRepayment.value) {
       earlyRepayment = getValueEarlyRepayment(date.getTime())
     }
@@ -281,19 +288,22 @@ function initCalculate() {
     if (currentTypeCredit.value === 'A') {
 
       if(prepaymentType.value === "pay" && beforeIsEarlyRepayment) {
-        const currentAmountMonth = amountMonth.value - i
-        currentSumCredit -= earlyRepayment
-        localMonthlyPaymentAnnuity = getMonthlyPaymentAnnuity(currentSumCredit, currentAmountMonth)
+        let newAmountMonth = amountMonth.value - i + 1
+        currentSumCredit -= beforeEarlyRepayment
+        localMonthlyPaymentAnnuity = getMonthlyPaymentAnnuity(currentSumCredit, newAmountMonth)
       }
 
-      pay = getPayAnnuity(currentSumCredit, localMonthlyPaymentAnnuity)
       percent = getPercentPiece(currentSumCredit)
       mainDebt = getMonthlyDebtRepaymentA(localMonthlyPaymentAnnuity, percent)
+      mainDebt = mainDebt > currentSumCredit ? currentSumCredit : mainDebt
+
+      // pay = getPayAnnuity(currentSumCredit, localMonthlyPaymentAnnuity)
+      pay = percent + mainDebt
 
       if (prepaymentType.value === "pay" && beforeIsEarlyRepayment ) {
         currentSumCredit = aroundCeil(currentSumCredit - mainDebt , 100 )
       } else {
-        currentSumCredit = aroundCeil(currentSumCredit - mainDebt - earlyRepayment, 100 )
+        currentSumCredit = aroundCeil(currentSumCredit - mainDebt - beforeEarlyRepayment, 100 )
       }
 
       balance = currentSumCredit >= 0 ? currentSumCredit : 0
@@ -303,27 +313,31 @@ function initCalculate() {
 
       percent = getPercentPiece(currentSumCredit)
       mainDebt = getMonthlyDebtRepaymentD()
+      mainDebt = mainDebt > currentSumCredit ? currentSumCredit : mainDebt
+
       pay = percent + mainDebt
-      currentSumCredit = aroundCeil(currentSumCredit - mainDebt - earlyRepayment, 100 )
+      currentSumCredit = aroundCeil(currentSumCredit - mainDebt - beforeEarlyRepayment, 100 )
       balance = currentSumCredit >= 0 ? currentSumCredit : 0
     }
 
     tableData.value.push({
       id: i,
-      date: `${date.toLocaleString('default', { month: 'long' })} ${date.getFullYear()} г`,
+      date: `${date.toLocaleString(inputOptions.value?.datepickerLanguage, { month: 'long' })} ${date.getFullYear()} г`,
       pay,
       percent,
       mainDebt,
       balance,
       earlyRepayment
     })
-    totalData.pay += pay
-    totalData.mainDebt += mainDebt
+    totalData.pay += pay + earlyRepayment
+    totalData.mainDebt += mainDebt + earlyRepayment
     totalData.percent += percent
     totalData.earlyRepayment += earlyRepayment
     date.setMonth(date.getMonth() + 1)
 
+
     beforeIsEarlyRepayment = Boolean(earlyRepayment > 0)
+    beforeEarlyRepayment = earlyRepayment
 
     if (balance <= 0 ) {
       break
@@ -332,19 +346,19 @@ function initCalculate() {
   totalData.balance = totalData.percent
 }
 
-function getValueEarlyRepayment(findTimestemp) {
-  const findDate = new Date(findTimestemp)
+function getValueEarlyRepayment(findTimestamp) {
+  const findDate = new Date(findTimestamp)
   const findMonth = findDate.getMonth()
   const findYear = findDate.getFullYear()
 
   const findRepayment = earlyRepaymentData.value.filter(data => {
-    const currentDate = new Date(data.timestemp)
+
+    const currentDate = new Date(data.timestamp)
     const currentMonth = currentDate.getMonth()
     const currentYear = currentDate.getFullYear()
 
     return findMonth === currentMonth && findYear === currentYear
   })
-
   return findRepayment.reduce((accum, thisData) => {
     if (thisData?.value) {
       return accum + thisData?.value
@@ -408,8 +422,10 @@ function getMonthlyDebtRepaymentD() {
  * @returns {number|number}
  */
 function getAnnuityCoefficient(currentAmountMonth) {
-  const top = aroundCeil(Math.pow( (1 + monthRate.value), currentAmountMonth), 1000000) * monthRate.value
-  const bottom = aroundCeil(Math.pow( (1 + monthRate.value), currentAmountMonth), 1000000) - 1
+  const totalRate = aroundCeil(Math.pow( (1 + monthRate.value), currentAmountMonth), roundupForTotal)
+
+  const top = totalRate * monthRate.value
+  const bottom = totalRate - 1
   const result =  top / bottom
   return isNaN(result) ? 0 : result
 }
@@ -446,7 +462,7 @@ function changeTimeCreditMonth (value) {
   timeCreditMonth.value = value
 }
 function changeInterestRate (value) {
-  interestRate.value = value
+  interestRate.value = aroundCeil(value, 10)
 }
 function changeTypeCredit (value) {
   currentTypeCredit.value = value
@@ -455,19 +471,19 @@ function changeTypeTime (value) {
   typeTime.value = value
 }
 
-function changeTimestemp(value) {
+function changeTimestamp(value) {
   dateTime.value = value
 }
 
 function addEarlyRepayment() {
   earlyRepaymentData.value.push({
-    timestemp: Date.now(),
+    timestamp: Date.now(),
     value: inputOptions.value?.earlyRepayment?.earlyRepayment
   })
 }
-function changeDateEarlyRepayment({index, timestemp, value}){
-  if (timestemp) {
-    earlyRepaymentData.value[index].timestemp = timestemp
+function changeDateEarlyRepayment({index, timestamp, value}){
+  if (timestamp) {
+    earlyRepaymentData.value[index].timestamp = timestamp
   }
   if (value) {
     earlyRepaymentData.value[index]['value'] = value
@@ -639,7 +655,7 @@ onMounted(async () => {
         :date-time="localDateTime"
         label="Дата первого платежа:"
         :language="inputOptions?.datepickerLanguage"
-        @change-timestemp="changeTimestemp"
+        @change-timestamp="changeTimestamp"
       />
 
     </div>
@@ -657,12 +673,12 @@ onMounted(async () => {
       </div>
       <div class="credit__data-wrapper" v-for="(data, idx) in earlyRepaymentData" :key="idx">
         <UiDatePicker
-          :date-time="data.timestemp"
+          :date-time="data.timestamp"
           :language="inputOptions?.datepickerLanguage"
-          @change-timestemp="changeDateEarlyRepayment({index: idx, timestemp: $event, value: null})"
+          @change-timestamp="changeDateEarlyRepayment({index: idx, timestamp: $event, value: null})"
       />
         <UiInput
-          @changed-value="changeDateEarlyRepayment({index: idx, timestemp: null, value: $event})"
+          @changed-value="changeDateEarlyRepayment({index: idx, timestamp: null, value: $event})"
           :input-value="inputOptions?.earlyRepayment?.earlyRepayment"
           data-type="onlyInteger"
           :min="inputOptions?.earlyRepayment?.min"
@@ -683,7 +699,6 @@ onMounted(async () => {
       :first-payment-currency="firstPaymentCurrency"
       :first-payment-percent="firstPaymentPercent"
       :type-time="typeTime"
-      :first-payment-type="firstPaymentType"
       :start-credit-sum="startCreditSum"
       :monthly-payment-annuity="monthlyPaymentAnnuity"
       :monthly-payment-differentiated="monthlyPaymentDifferentiated"
@@ -885,6 +900,7 @@ $c_base_border_width: 1px;
     font-weight: bold;
     padding: 5px;
     text-align: center;
+    caption-side: top;
   }
   &__thead {
     position: sticky;
@@ -1291,43 +1307,29 @@ $c_base_border_width: 1px;
       min-height: 60px;
       padding: 20px 35px;
       width: 100%;
-      &:focus,
-      &:hover {
-        border-color: $c_base_border_color_hover;
-      }
     }
     textarea {
       border-radius: $c_base_border_radius;
       font-size: 16px;
       line-height: 20px;
-      color: $c_base_text;
       padding: 20px 35px;
       outline: none;
       border-width: 2px;
       border-style: solid;
       width: 100%;
-      &:focus,
-      &:hover {
-        border-color: $c_base_border_color_hover;
-      }
-      &#teleport {
-        //display: none;
-      }
     }
     button {
       border-radius: $c_base_border_radius;
-      background-color: $c_base_bg_color_selected;
-      color: $c_base_text_selected;
+      background-color: $c_base_bg_color;
+      border: $c_base_border_color solid $c_base_border_width;
+      color: $c_base_text;
       font-weight: 900;
       font-size: 17px;
       line-height: 23px;
       display: flex;
       align-items: center;
       text-align: center;
-      text-transform: uppercase;
       padding: 21px 25px;
-      border: none;
-      cursor: not-allowed;
       &:hover:enabled {
         cursor: pointer;
         background-color: $c_base_bg_color_hover;

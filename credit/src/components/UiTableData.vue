@@ -77,15 +77,15 @@ function toggleOpened() {
     <table class="credit__table" v-if="showTable">
       <caption class="credit__caption" v-if="isCaption">{{otherLabels?.caption}}</caption>
       <thead class="credit__thead">
-      <tr class="credit__tr">
-        <th class="credit__th">№</th>
-        <th class="credit__th" v-if="isDate">{{ otherLabels?.date }}</th>
-        <th class="credit__th" v-if="isPay">{{ otherLabels?.pay }}</th>
-        <th class="credit__th" v-if="isPercent">{{otherLabels?.percent}}</th>
-        <th class="credit__th" v-if="isMainDebt">{{otherLabels?.mainDebt}}</th>
-        <th class="credit__th" v-if="isBalance">{{otherLabels?.balance}}</th>
-        <th class="credit__th" v-if="isEarlyRepayment">{{otherLabels?.repayment}}</th>
-      </tr>
+        <tr class="credit__tr">
+          <th class="credit__th">№</th>
+          <th class="credit__th" v-if="isDate">{{ otherLabels?.date }}</th>
+          <th class="credit__th" v-if="isPay">{{ otherLabels?.pay }}</th>
+          <th class="credit__th" v-if="isPercent">{{otherLabels?.percent}}</th>
+          <th class="credit__th" v-if="isMainDebt">{{otherLabels?.mainDebt}}</th>
+          <th class="credit__th" v-if="isBalance">{{otherLabels?.balance}}</th>
+          <th class="credit__th" v-if="isEarlyRepayment">{{otherLabels?.repayment}}</th>
+        </tr>
       </thead>
       <tbody>
       <tr class="credit__tr" v-for="(ceil, idx) in tableData" :key="idx">
@@ -95,7 +95,7 @@ function toggleOpened() {
         <td class="credit__td" v-if="isPercent">{{ceil.percent.toLocaleString()}}</td>
         <td class="credit__td" v-if="isMainDebt">{{ceil.mainDebt.toLocaleString()}}</td>
         <td class="credit__td" v-if="isBalance">{{ceil.balance.toLocaleString()}}</td>
-        <td class="credit__td" v-if="isEarlyRepayment">{{ceil.earlyRepayment ? ceil.earlyRepayment : '-'}}</td>
+        <td class="credit__td" v-if="isEarlyRepayment">{{ceil.earlyRepayment ? ceil.earlyRepayment.toLocaleString() : '-'}}</td>
       </tr>
       <tr class="credit__tr">
         <td class="credit__td">∑</td>
@@ -103,8 +103,8 @@ function toggleOpened() {
         <td class="credit__td" v-if="isPay">{{totalData.pay.toLocaleString()}}</td>
         <td class="credit__td" v-if="isPercent">{{totalData.percent.toLocaleString()}}</td>
         <td class="credit__td" v-if="isMainDebt">{{totalData.mainDebt.toLocaleString()}}</td>
-        <td class="credit__td" v-if="isBalance">{{totalData.balance.toLocaleString()}}</td>
-        <td class="credit__td" v-if="isEarlyRepayment">{{totalData.earlyRepayment ? totalData.earlyRepayment : '-'}}</td>
+        <td class="credit__td" v-if="isBalance"></td>
+        <td class="credit__td" v-if="isEarlyRepayment">{{totalData.earlyRepayment ? totalData.earlyRepayment.toLocaleString() : '-'}}</td>
       </tr>
       </tbody>
     </table>

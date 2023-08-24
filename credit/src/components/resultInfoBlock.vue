@@ -88,6 +88,10 @@ const props = defineProps({
     type: Object,
     default: () => {}
   },
+  currency: {
+    type: String,
+    default: 'руб'
+  }
 
 })
 
@@ -107,7 +111,6 @@ const isTeleportExist = computed(() => {
   return Boolean(teleportField.value)
 })
 
-
 function findForm() {
   const form = document.querySelector("#calc__form-for-result");
   formElement.value = form ? form : null;
@@ -122,7 +125,7 @@ function findTeleportField() {
 }
 
 function setReadOnlyForTeleportField() {
-  if (teleportField.value) {
+  if (!teleportField.value) {
     findTeleportField();
   }
   if (teleportField.value) {
@@ -130,12 +133,19 @@ function setReadOnlyForTeleportField() {
   }
 }
 
+function updateNumber(value) {
+  return value.toLocaleString("ru-RU", {
+    useGrouping: true,
+    maximumFractionDigits: 5,
+  });
+}
+
 const teleportResultText = computed(() => {
   let result = ''
-  result += `${props.labelSum} ${props.startCreditSum} \n`
+  result += `${props.labelSum} ${updateNumber(props.startCreditSum)} ${props.currency}\n`
 
   if (props.enabledFirstPayment) {
-    result += `${props.labelCurrency} ${props.firstPaymentCurrency}\n`
+    result += `${props.labelCurrency} ${updateNumber(props.firstPaymentCurrency)} ${props.currency}\n`
     result += `${props.labelPercent} ${props.firstPaymentPercent}\n`
   }
 
@@ -148,14 +158,14 @@ const teleportResultText = computed(() => {
   result += `${props.labelTypeCredit} ${props.nameTypeCredit} \n`
 
   if (props.typeCredit === "A") {
-    result += `${props.otherLabels.pay} (${props.nameTypeCredit}):  ${props.monthlyPaymentAnnuity} \n`
+    result += `${props.otherLabels?.pay} (${props.nameTypeCredit}):  ${updateNumber(props.monthlyPaymentAnnuity)} ${props.currency}\n`
   } else {
-    result += `${props.otherLabels.pay} (${props.nameTypeCredit}): ${props.monthlyPaymentDifferentiated} \n`
+    result += `${props.otherLabels?.pay} (${props.nameTypeCredit}): ${updateNumber(props.monthlyPaymentDifferentiated)} ${props.currency}\n`
   }
 
 
-  result += `${props.otherLabels.totalPayment} ${props.totalData.pay} \n`
-  result += `${props.otherLabels.percent}  ${overpaymentAmount.value} \n`
+  result += `${props.otherLabels?.totalPayment} ${updateNumber(props.totalData?.pay)} ${props.currency}\n`
+  result += `${props.otherLabels?.percent}  ${updateNumber(overpaymentAmount.value)} ${props.currency}\n`
 
 
   return result
@@ -179,43 +189,28 @@ onMounted(() => {
         {{ labelSum }}
       </div>
       <div class="credit__info-block-value">
-        {{startCreditSum}}
-      </div>
-    </div>
-    <div class="credit__info-block-item" v-if="typeCredit === 'A'">
-      <div class="credit__info-block-title">
-        Ежемесячный платеж (аннуитет):
-      </div>
-      <div class="credit__info-block-value">
-        {{ monthlyPaymentAnnuity }}
-      </div>
-    </div>
-    <div class="credit__info-block-item" v-if="typeCredit === 'D'">
-      <div class="credit__info-block-title">
-        Ежемесячный платеж (начальный):
-      </div>
-      <div class="credit__info-block-value">
-        {{ monthlyPaymentDifferentiated }}
-      </div>
-    </div>
-    <div class="credit__info-block-item">
-      <div class="credit__info-block-title">
-        {{otherLabels?.totalPayment}}
-      </div>
-      <div class="credit__info-block-value">
-        {{totalData.pay}}
-      </div>
-    </div>
-    <div class="credit__info-block-item">
-      <div class="credit__info-block-title">
-        Переплата по кредиту:
-      </div>
-      <div class="credit__info-block-value">
-        {{overpaymentAmount}}
+        {{updateNumber(startCreditSum)}} {{currency}}
       </div>
     </div>
 
-
+    <template v-if="enabledFirstPayment">
+      <div class="credit__info-block-item" >
+        <div class="credit__info-block-title">
+          {{labelCurrency}}
+        </div>
+        <div class="credit__info-block-value">
+          {{updateNumber(firstPaymentCurrency)}}
+        </div>
+      </div>
+      <div class="credit__info-block-item">
+        <div class="credit__info-block-title">
+          {{labelPercent}}
+        </div>
+        <div class="credit__info-block-value">
+          {{firstPaymentPercent}}
+        </div>
+      </div>
+    </template>
 
     <div class="credit__info-block-item" v-if="typeTime === 'year'">
       <div class="credit__info-block-title">
@@ -234,25 +229,63 @@ onMounted(() => {
       </div>
     </div>
 
+    <div class="credit__info-block-item">
+      <div class="credit__info-block-title">
+        {{labelInterestRate}}
+      </div>
+      <div class="credit__info-block-value">
+        {{interestRate}}
+      </div>
+    </div>
 
-    <template v-if="enabledFirstPayment">
-      <div class="credit__info-block-item" >
-        <div class="credit__info-block-title">
-          {{labelCurrency}}
-        </div>
-        <div class="credit__info-block-value">
-          {{firstPaymentCurrency}}
-        </div>
+    <div class="credit__info-block-item" v-if="typeTime === 'month'">
+      <div class="credit__info-block-title">
+        {{labelTypeCredit}}
       </div>
-      <div class="credit__info-block-item">
-        <div class="credit__info-block-title">
-          {{labelPercent}}
-        </div>
-        <div class="credit__info-block-value">
-          {{firstPaymentPercent}}
-        </div>
+      <div class="credit__info-block-value">
+        {{nameTypeCredit}}
       </div>
-     </template>
+    </div>
+
+    <div class="credit__info-block-item" v-if="typeCredit === 'A'">
+      <div class="credit__info-block-title">
+        {{otherLabels?.pay}} ({{nameTypeCredit}})
+      </div>
+      <div class="credit__info-block-value">
+        {{updateNumber(monthlyPaymentAnnuity)}} {{currency}}
+      </div>
+    </div>
+    <div class="credit__info-block-item" v-if="typeCredit === 'D'">
+      <div class="credit__info-block-title">
+        {{otherLabels?.pay}} ({{nameTypeCredit}})
+      </div>
+      <div class="credit__info-block-value">
+        {{updateNumber(monthlyPaymentDifferentiated)}} {{currency}}
+      </div>
+    </div>
+    <div class="credit__info-block-item">
+      <div class="credit__info-block-title">
+        {{otherLabels?.totalPayment}}
+      </div>
+      <div class="credit__info-block-value">
+        {{updateNumber(totalData.pay)}} {{currency}}
+      </div>
+    </div>
+    <div class="credit__info-block-item">
+      <div class="credit__info-block-title">
+        {{otherLabels?.percent}}
+      </div>
+      <div class="credit__info-block-value">
+        {{updateNumber(overpaymentAmount)}} {{currency}}
+      </div>
+    </div>
+
+
+
+
+
+
+
   </div>
   <teleport v-if="isTeleportExist" to="#teleport">
     {{ teleportResultText }}

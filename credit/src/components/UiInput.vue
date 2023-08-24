@@ -163,25 +163,12 @@ const isErrorNumber = computed(() => {
   );
 });
 
-const errorNumberText = computed(() => {
-  return isErrorNumber.value ? "Только числа!" : null;
-});
-
-
 const isErrorMax = computed(() => {
   return (
     !valueIsNaN.value &&
     localMax.value !== null &&
     parseFloat(localInputValue.value) > localMax.value
   );
-});
-
-const errorMaxText = computed(() => {
-  return localMax.value !== null &&
-    !valueIsNaN.value &&
-    parseFloat(localInputValue.value) > localMax.value
-    ? `Максимальное значение ${localMax.value}`
-    : null;
 });
 
 const isErrorMin = computed(() => {
@@ -192,28 +179,20 @@ const isErrorMin = computed(() => {
   );
 });
 
-const errorMinText = computed(() => {
-  return localMin.value !== null &&
-    !valueIsNaN.value &&
-    parseFloat(localInputValue.value) < localMin.value
-    ? `Минимальное значение ${localMin.value}`
-    : null;
-});
-
 const tooltipError = computed(() => {
   if (isErrorNumber.value) {
-    return { error: isErrorNumber.value, errorText: errorNumberText.value };
+    return  isErrorNumber.value;
   } else if (isErrorMax.value) {
-    return { error: isErrorMax.value, errorText: errorMaxText.value };
+    return  isErrorMax.value
   } else if (isErrorMin.value) {
-    return { error: isErrorMin.value, errorText: errorMinText.value };
+    return isErrorMin.value
   } else {
     return false;
   }
 });
 
 const isErrorClass = computed(() => {
-  return tooltipError.value?.error
+  return tooltipError.value
 });
 
 const isErrorEmpty = computed(() => {
