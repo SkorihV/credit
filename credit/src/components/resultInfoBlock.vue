@@ -134,10 +134,13 @@ function setReadOnlyForTeleportField() {
 }
 
 function updateNumber(value) {
-  return value.toLocaleString("ru-RU", {
+
+  return  value ? value.toLocaleString("ru-RU", {
     useGrouping: true,
     maximumFractionDigits: 5,
-  });
+  })
+    : value
+
 }
 
 const teleportResultText = computed(() => {
@@ -199,7 +202,7 @@ onMounted(() => {
           {{labelCurrency}}
         </div>
         <div class="credit__info-block-value">
-          {{updateNumber(firstPaymentCurrency)}}
+          {{updateNumber(firstPaymentCurrency)}} {{currency}}
         </div>
       </div>
       <div class="credit__info-block-item">

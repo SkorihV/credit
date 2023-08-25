@@ -270,8 +270,6 @@ function initCalculate() {
   let currentSumCredit = computedStartCreditSum.value
   let localMonthlyPaymentAnnuity = monthlyPaymentAnnuity.value
   let date = new Date(localDateTime.value)
-  let beforeIsEarlyRepayment = false;
-  let beforeEarlyRepayment = 0
   let earlyRepayment = 0
 
   for (let i = 1; i <= amountMonth.value; i++) {
@@ -285,40 +283,51 @@ function initCalculate() {
     }
 
 
+
+    if(earlyRepayment) {
+      let newAmountMonth = amountMonth.value - i + 1
+      currentSumCredit -= earlyRepayment
+
+      tableData.value.push({
+        id: i,
+        date: `${date.toLocaleString(inputOptions.value?.datepickerLanguage, { month: 'long' })} ${date.getFullYear()}`,
+        pay: null,
+        percent: null,
+        mainDebt: null,
+        balance: currentSumCredit,
+        earlyRepayment
+      })
+
+      if (prepaymentType.value === "pay") {
+        localMonthlyPaymentAnnuity = getMonthlyPaymentAnnuity(currentSumCredit, newAmountMonth)
+      }
+    }
+
     if (currentTypeCredit.value === 'A') {
 
-      if(prepaymentType.value === "pay" && beforeIsEarlyRepayment) {
-        let newAmountMonth = amountMonth.value - i + 1
-        currentSumCredit -= beforeEarlyRepayment
-        localMonthlyPaymentAnnuity = getMonthlyPaymentAnnuity(currentSumCredit, newAmountMonth)
+      if(earlyRepayment) {
+        const newAmountMonth = amountMonth.value - i + 1
+        if (prepaymentType.value === "pay") {
+          localMonthlyPaymentAnnuity = getMonthlyPaymentAnnuity(currentSumCredit, newAmountMonth)
+        }
       }
 
       percent = getPercentPiece(currentSumCredit)
       mainDebt = getMonthlyDebtRepaymentA(localMonthlyPaymentAnnuity, percent)
       mainDebt = mainDebt > currentSumCredit ? currentSumCredit : mainDebt
 
-      // pay = getPayAnnuity(currentSumCredit, localMonthlyPaymentAnnuity)
-      pay = percent + mainDebt
-
-      if (prepaymentType.value === "pay" && beforeIsEarlyRepayment ) {
-        currentSumCredit = aroundCeil(currentSumCredit - mainDebt , 100 )
-      } else {
-        currentSumCredit = aroundCeil(currentSumCredit - mainDebt - beforeEarlyRepayment, 100 )
-      }
-
-      balance = currentSumCredit >= 0 ? currentSumCredit : 0
-      // percent = balance === 0 && mainDebt > pay ? 0 : percent
+      pay = aroundCeil(percent + mainDebt, 100)
 
     } else if (currentTypeCredit.value === "D") {
 
       percent = getPercentPiece(currentSumCredit)
       mainDebt = getMonthlyDebtRepaymentD()
       mainDebt = mainDebt > currentSumCredit ? currentSumCredit : mainDebt
+      pay = aroundCeil(percent + mainDebt, 100 )
 
-      pay = percent + mainDebt
-      currentSumCredit = aroundCeil(currentSumCredit - mainDebt - beforeEarlyRepayment, 100 )
-      balance = currentSumCredit >= 0 ? currentSumCredit : 0
     }
+    currentSumCredit = makeMultiple(currentSumCredit - mainDebt, roundUpPaymentSum )
+    balance = currentSumCredit >= 0 ? currentSumCredit : 0
 
     tableData.value.push({
       id: i,
@@ -327,19 +336,16 @@ function initCalculate() {
       percent,
       mainDebt,
       balance,
-      earlyRepayment
+      earlyRepayment: 0
     })
+
     totalData.pay += pay + earlyRepayment
     totalData.mainDebt += mainDebt + earlyRepayment
     totalData.percent += percent
     totalData.earlyRepayment += earlyRepayment
     date.setMonth(date.getMonth() + 1)
 
-
-    beforeIsEarlyRepayment = Boolean(earlyRepayment > 0)
-    beforeEarlyRepayment = earlyRepayment
-
-    if (balance <= 0 ) {
+    if (balance <= 5 ) {
       break
     }
   }
@@ -380,15 +386,15 @@ function getPercentPiece(debtBalance) {
   return aroundCeil(debtBalance * monthRate.value, 100 );
 }
 
-function getPayAnnuity(currentSumCredit, monthlyPaymentAnnuity) {
-
-  if(isRoundSum.value) {
-    const pay = aroundCeil(monthlyPaymentAnnuity < currentSumCredit ? monthlyPaymentAnnuity : currentSumCredit, 100 )
-    return makeMultiple(pay, roundUpPaymentSum)
-  }
-
-  return aroundCeil(monthlyPaymentAnnuity < currentSumCredit ? monthlyPaymentAnnuity : currentSumCredit, 100 )
-}
+// function getPayAnnuity(currentSumCredit, monthlyPaymentAnnuity) {
+//
+//   if(isRoundSum.value) {
+//     const pay = aroundCeil(monthlyPaymentAnnuity < currentSumCredit ? monthlyPaymentAnnuity : currentSumCredit, 100 )
+//     return makeMultiple(pay, roundUpPaymentSum)
+//   }
+//
+//   return aroundCeil(monthlyPaymentAnnuity < currentSumCredit ? monthlyPaymentAnnuity : currentSumCredit, 100 )
+// }
 
 /**
  * Аннуитет
@@ -462,7 +468,7 @@ function changeTimeCreditMonth (value) {
   timeCreditMonth.value = value
 }
 function changeInterestRate (value) {
-  interestRate.value = aroundCeil(value, 10)
+  interestRate.value = value
 }
 function changeTypeCredit (value) {
   currentTypeCredit.value = value
@@ -913,11 +919,20 @@ $c_base_border_width: 1px;
     border: $c_base_border_width solid $c_base_text;
     color: $c_base_text_selected
   }
+  &__tr {
+    &-repayment td {
+      background: $c_base_bg_color_selected;
+      color: $c_base_text_selected;
+    }
+  }
 
   &__td {
     padding: 5px 10px;
     border: $c_base_border_width solid $c_base_text;
     text-align: left;
+    &-repayment {
+      text-align: center;
+    }
   }
 
   &__table tbody .credit__tr:nth-child(odd){

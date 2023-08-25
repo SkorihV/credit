@@ -2,7 +2,7 @@
   "calculatorOptions": {
     "enabledFirstPayment": true,
     "enabledChangeFirstPay": true,
-    "roundUpPaymentSum": 1,
+    "roundUpPaymentSum": 0.01,
     "currency": "руб",
     "datepickerLanguage": "ru",
     "startSum": {
@@ -12,7 +12,7 @@
       "max": 10000000,
       "step": 1000,
       "controls": true,
-      "discreteStep": true
+      "discreteStep": false
     },
     "firstPaymentCurrency": {
       "title": "Первоначальный взнос:",
@@ -21,7 +21,7 @@
       "max": 10000000,
       "step": 1000,
       "controls": true,
-      "discreteStep": true
+      "discreteStep": false
     },
     "firstPaymentPercent": {
       "title": "Первоначальный взнос в %:",

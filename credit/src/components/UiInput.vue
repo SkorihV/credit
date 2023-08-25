@@ -95,7 +95,6 @@ const props = defineProps({
     },
   }
 });
-
 const inputFocus = ref(false);
 const focusTimerName = ref(null);
 const localInputBufferValue = ref(null);
@@ -199,18 +198,17 @@ const isErrorEmpty = computed(() => {
   return !localInputValue.value?.toString().length;
 });
 
-const needFixedResult = computed(() => {
-  return Boolean(
-    (props.discreteStep || props.controls) && onlyIntegerValue.value
-  );
-});
+// const needFixedResult = computed(() => {
+//   return Boolean(
+//     (props.discreteStep || props.controls) && onlyIntegerValue.value
+//   );
+// });
 
 const numberSignsAfterComma = computed(() => {
-  return props.step.toString().includes(".") && needFixedResult.value
+  return props.step.toString().includes(".") && !onlyIntegerValue.value
     ? props.step.toString().split(".").pop().length
     : 0;
 });
-
 
 watch(inputFocus, (isFocus) => {
   if (!isFocus) {
@@ -290,7 +288,7 @@ function changeValue() {
 function changeValueWitchTimer(value) {
   nameTimer.value = setTimeout(() => {
     localInputValue.value = value;
-    changeValue();
+    changeValue('changeValueWitchTimer');
   }, 2000);
 }
 
@@ -321,14 +319,13 @@ function minus(payload) {
   if (valueIsNaN.value) {
     resetNumberValue();
   }
-
   let value = parseFloat(localInputValue.value) - localStep.value;
-
   if (checkedValueOnVoid(localMin.value)) {
     value = value >= localMin.value ? value : localMin.value;
   }
   value = updateValueAfterSignComma(value);
   localInputValue.value = value;
+
   addLocalInputBufferValue(value);
   if (payload !== "key") {
     changeValue("minus");
@@ -336,15 +333,12 @@ function minus(payload) {
 }
 
 function updateValueAfterSignComma(value) {
-  return needFixedResult.value
-    ? parseFloat(value.toFixed(numberSignsAfterComma.value))
-    : value;
+   return parseFloat(value.toFixed(numberSignsAfterComma.value))
 }
 
 function resetNumberValue() {
   changeValueWitchTimer(localMin.value || 0);
 }
-
 
 function addLocalInputBufferValue(value) {
     localInputBufferValue.value = value.toLocaleString("ru-RU", {
@@ -353,30 +347,27 @@ function addLocalInputBufferValue(value) {
     });
 }
 
-
 function updatedLocalInputValue() {
   if (localMin.value > Number(props.inputValue)) {
     localInputValue.value = localMin.value;
-    changeValue();
+    changeValue('updatedLocalInputValue + localMin');
   } else if (localMax.value < Number(props.inputValue)) {
     localInputValue.value = localMax.value;
-    changeValue();
+    changeValue('updatedLocalInputValue + localMax');
   } else {
     localInputValue.value = props.inputValue;
-    changeValue();
+    changeValue('updatedLocalInputValue + else');
   }
 }
 
 watch(() => props.inputValue, () => {
-  updatedLocalInputValue()
+    updatedLocalInputValue('watch props.inputValue')
 })
 
+
 onMounted(() => {
-  updatedLocalInputValue()
+  updatedLocalInputValue('onMounted')
 });
-
-
-
 
 </script>
 

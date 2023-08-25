@@ -38,7 +38,7 @@ const checkedValueOnVoid = (value) => {
 };
 
 /**
- *
+ * приводим число к кратному например 60
  * @param originalNumber
  * @param multiple
  * @returns {*}
@@ -52,6 +52,12 @@ function makeMultiple(originalNumber, multiple) {
   return originalNumber - remainder + multiple;
 }
 
+/**
+ * отрезаем количество знаков после запятой указываем сотни
+ * @param value
+ * @param factor
+ * @returns {number}
+ */
 function aroundCeil(value, factor = 1) {
   return Math.ceil(value * factor) / factor;
 }
