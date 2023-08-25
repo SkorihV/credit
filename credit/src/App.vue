@@ -556,6 +556,7 @@ onMounted(async () => {
 <template>
   <div class="credit__main-wrapper">
     <div class="credit__data-wrapper">
+      {{startCreditSum}}
       <UiInput
         :label="inputOptions?.startSum?.title"
         :unit="currency"
@@ -566,6 +567,7 @@ onMounted(async () => {
         :min="inputOptions?.startSum?.min"
         :step="inputOptions?.startSum?.step"
         :discrete-step="inputOptions?.startSum?.discreteStep"
+        query-param-name="startCreditSum"
         @changed-value="changeSum"
       />
     </div>

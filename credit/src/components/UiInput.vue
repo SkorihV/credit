@@ -8,6 +8,8 @@ import {
 
 
 import {checkedValueOnVoid} from "@/servises/UtilityServices";
+import {getQueryParam, setQueryParam} from "@/composables/useQueryParam";
+
 
 const emits = defineEmits(["changedValue"]);
 const props = defineProps({
@@ -93,6 +95,10 @@ const props = defineProps({
     validator(value) {
       return value === false || value === true || value === 0 || value === 1;
     },
+  },
+  queryParamName: {
+    type: String,
+    default: null
   }
 });
 const inputFocus = ref(false);
@@ -100,7 +106,6 @@ const focusTimerName = ref(null);
 const localInputBufferValue = ref(null);
 const localInputValue = ref(null);
 const nameTimer = ref(null);
-
 
 
 const isExistLabel = computed(() => {
@@ -283,6 +288,7 @@ function resultWitchNumberValid() {
 }
 function changeValue() {
   emits('changedValue', resultValue.value)
+  setQueryParam(props.queryParamName, resultValue.value)
 }
 
 function changeValueWitchTimer(value) {
@@ -347,7 +353,7 @@ function addLocalInputBufferValue(value) {
     });
 }
 
-function updatedLocalInputValue() {
+function updatedLocalInputValue(newValue) {
   if (localMin.value > Number(props.inputValue)) {
     localInputValue.value = localMin.value;
     changeValue('updatedLocalInputValue + localMin');
@@ -364,9 +370,22 @@ watch(() => props.inputValue, () => {
     updatedLocalInputValue('watch props.inputValue')
 })
 
+watch(localInputValue, (q) => {
+  console.log(q)
+})
+
 
 onMounted(() => {
-  updatedLocalInputValue('onMounted')
+  const newValue = getQueryParam(props.queryParamName)
+  if (newValue !== null && !isNaN(newValue)) {
+    localInputValue.value = parseFloat(newValue)
+    setTimeout(() => {
+      changeValue()
+
+    }, 100)
+  } else {
+    updatedLocalInputValue()
+  }
 });
 
 </script>
