@@ -3,6 +3,7 @@
 //https://mortgage-calculator.ru/%D1%84%D0%BE%D1%80%D0%BC%D1%83%D0%BB%D0%B0-%D1%80%D0%B0%D1%81%D1%87%D0%B5%D1%82%D0%B0-%D0%B8%D0%BF%D0%BE%D1%82%D0%B5%D0%BA%D0%B8/
 //https://www.calc.ru/kreditnyi-kalkulyator.html
 //https://calcus.ru/kalkulyator-ipoteki
+// https://mobile-testing.ru/loancalc/rachet_dosrochnogo_pogashenia/
 
 import '@vuepic/vue-datepicker/dist/main.css'
 import {ref, computed, reactive, watch, onMounted} from 'vue'
@@ -15,25 +16,84 @@ import UiTableData from "@/components/UiTableData.vue";
 import UiDatePicker from "@/components/UiDatePicker.vue";
 import ResultInfoBlock from "@/components/resultInfoBlock.vue";
 
-import {IS_LOCAL} from "@/constants";
+import {fetchInputData} from "@/fetch";
+
+/**
+ * получаемые извне данные
+ * @type {Ref<UnwrapRef<{}>>}
+ */
 const inputOptions = ref({})
 
-const startCreditSum = ref(2000000) // сумма кредита
+/**
+ * стартовая сумма кредита
+ * @type {Ref<UnwrapRef<number>>}
+ */
+const startCreditSum = ref(2000000)
 
-const firstPaymentCurrency = ref(500000) // первоначальный взнос в валюте
-const firstPaymentPercent = ref(10) // первоначальный взнос в процентах
+/**
+ * первоначальный взнос в валюте
+ * @type {Ref<UnwrapRef<number>>}
+ */
+const firstPaymentCurrency = ref(500000)
 
-const firstPaymentType = ref('currency') // тип первоначального взноса
-const timeCreditYear = ref(5) // срок кредита в годах
-const timeCreditMonth = ref(240) // срок кредита в месяцах
-const typeTime = ref('year') // тип времени
+/**
+ * первоначальный взнос в процентах
+ * @type {Ref<UnwrapRef<number>>}
+ */
+const firstPaymentPercent = ref(10)
 
-const interestRate = ref(9.6) //процентная ставка
-const currentTypeCredit = ref('A')  // тип расчета кредита
+/**
+ * текущий тип первоначального взноса
+ * @type {Ref<UnwrapRef<string>>}
+ */
+const firstPaymentType = ref('currency')
 
+/**
+ * срок кредита в годах
+ * @type {Ref<UnwrapRef<number>>}
+ */
+const timeCreditYear = ref(5)
 
-const dateTime = ref(0) // дата первого платежа
+/**
+ * срок кредита в месяцах
+ * @type {Ref<UnwrapRef<number>>}
+ */
+const timeCreditMonth = ref(240)
+
+/**
+ * текущий тип времени
+ * @type {Ref<UnwrapRef<string>>}
+ */
+const typeTime = ref('year')
+
+/**
+ * процентная ставка
+ * @type {Ref<UnwrapRef<number>>}
+ */
+const interestRate = ref(9.6)
+
+/**
+ * текущий тип расчета кредита
+ * A - аннуитетный
+ * D - дифференцированный
+ * @type {Ref<UnwrapRef<string>>}
+ */
+const currentTypeCredit = ref('A')
+
+/**
+ *  дата первого платежа
+ * @type {Ref<UnwrapRef<number>>}
+ */
+const dateTime = ref(0)
+/**
+ * данные для таблицы платежей
+ * @type {Ref<UnwrapRef<*[]>>}
+ */
 const tableData = ref([])
+/**
+ * Суммарные данные для таблицы
+ * @type {UnwrapNestedRefs<{percentLocal: number, earlyRepayment, balance, balanceLocal: number, earlyRepaymentLocal: number, pay, mainDebt, percent, payLocal: number, mainDebtLocal: number}>}
+ */
 const totalData = reactive({
   payLocal: 0,
   mainDebtLocal: 0,
@@ -78,18 +138,47 @@ const totalData = reactive({
  * @type {number}
  */
 const roundupForTotal = 1000000
-let roundUpPaymentSum = 100 // сумма округления при расчетах
+
+/**
+ *  сумма округления при расчетах
+ * @type {number}
+ */
+let roundUpPaymentSum = 100
+
+/**
+ * Текущий вариант предоплаты
+ * @type {Ref<UnwrapRef<string>>}
+ */
 const prepaymentType = ref('month')
-const earlyRepaymentData = ref([]) // данные для досрочного погашения
 
+/**
+ *  данные для досрочного погашения
+ * @type {Ref<UnwrapRef<*[]>>}
+ */
+const earlyRepaymentData = ref([])
 
+/**
+ * разрешить возможность досрочных платежей
+ * @type {boolean}
+ */
 let enabledEarlyRepayment = true
+
 /**
  * both, annuity, differentiated
  * @type {Ref<UnwrapRef<string>>}
  */
 const enabledCreditType = ref('both')
+
+/**
+ * разрешить возможность изменить дату первого платежа
+ * @type {boolean}
+ */
 let enabledChangeFirstPay = true
+
+/**
+ * Возможность произвести первоначальный взнос
+ * @type {boolean}
+ */
 let enabledFirstPayment = true
 let currency = ref("руб")
 
@@ -105,10 +194,19 @@ const radioDataTypeCredit = computed(() => {
     }
   ]
 })
+
+/**
+ * Выбранный вариант типа платежа
+ * @type {ComputedRef<*>}
+ */
 const nameTypeCredit = computed(() => {
   return currentTypeCredit.value === "A" ? inputOptions.value?.creditType?.annuity : inputOptions.value?.creditType?.differentiated
 })
 
+/**
+ * Возможные варианты типа платежей аннуитетный / дифференцированный
+ * @type {ComputedRef<unknown>}
+ */
 const localRadioDataTypeCredit = computed(() => {
   if (enabledCreditType.value === 'annuity') {
     return radioDataTypeCredit.value.filter(item => item.radioValue === 'A')
@@ -119,6 +217,10 @@ const localRadioDataTypeCredit = computed(() => {
   }
 })
 
+/**
+ * тип выбираемого времени данные для селекта
+ * @type {ComputedRef<[{selectValue: string, selectLabel: *},{selectValue: string, selectLabel: *}]>}
+ */
 const selectDataTypeTime = computed(() => {
   return [
     {
@@ -131,6 +233,11 @@ const selectDataTypeTime = computed(() => {
     }
   ]
   })
+
+/**
+ * Вид первоначального взноса данные для селекта
+ * @type {ComputedRef<[{selectValue: string, selectLabel: UnwrapRef<string>},{selectValue: string, selectLabel: string}]>}
+ */
 const selectDataFirstPayType = computed(() => {
   return [
     {
@@ -144,6 +251,10 @@ const selectDataFirstPayType = computed(() => {
   ]
 })
 
+/**
+ * Тип досрочного погашения данные для селекта
+ * @type {ComputedRef<[{selectValue: string, selectLabel: *},{selectValue: string, selectLabel: *}]>}
+ */
 const selectDataPrepaymentType = computed(() => {
   return [
     {
@@ -156,7 +267,6 @@ const selectDataPrepaymentType = computed(() => {
     }
   ]
 })
-
 
 /**
  * СРОК_ИПОТЕКИ_МЕСЯЦЕВ
@@ -281,8 +391,6 @@ function initCalculate() {
     if (isEarlyRepayment.value) {
       earlyRepayment = getValueEarlyRepayment(date.getTime())
     }
-
-
 
     if(earlyRepayment) {
       let newAmountMonth = amountMonth.value - i + 1
@@ -421,7 +529,6 @@ function getMonthlyDebtRepaymentD() {
   return aroundCeil(computedStartCreditSum.value / amountMonth.value, 100)
 }
 
-
 /**
  * месячный платеж
  * @param currentAmountMonth
@@ -510,25 +617,7 @@ function chanePrepaymentType(type) {
 }
 
 onMounted(async () => {
-  if (IS_LOCAL) {
-    await fetch('http://localhost:5001/calculatorOptions')
-      .then((response) => {
-        return response.json()
-      })
-      .then((data) => {
-        inputOptions.value = data
-      })
-  } else {
-    try {
-      inputOptions.value = JSON.parse(
-        JSON.stringify(window?.calculatorOptions)
-      )
-    } catch (e) {
-      console.error(
-        "Не удалось получить настройки для калькулятора" + e.message
-      );
-    }
-  }
+  inputOptions.value = await fetchInputData()
 
   startCreditSum.value = inputOptions.value?.startSum?.startCreditSum
 
@@ -538,8 +627,7 @@ onMounted(async () => {
   timeCreditMonth.value = inputOptions.value?.timeCreditMonth?.timeCreditMonth
   interestRate.value = inputOptions.value?.interestRate?.interestRate
 
-
-  enabledEarlyRepayment = Boolean(inputOptions.value?.earlyRepayment?.enabledEarlyRepayment)
+  enabledEarlyRepayment = Boolean(inputOptions.value?.enabledEarlyRepayment)
   enabledCreditType.value = inputOptions.value?.creditType?.enabledCreditType
   enabledChangeFirstPay = Boolean(inputOptions.value?.enabledChangeFirstPay)
   enabledFirstPayment = Boolean(inputOptions.value?.enabledFirstPayment)
@@ -556,7 +644,6 @@ onMounted(async () => {
 <template>
   <div class="credit__main-wrapper">
     <div class="credit__data-wrapper">
-      {{startCreditSum}}
       <UiInput
         :label="inputOptions?.startSum?.title"
         :unit="currency"
@@ -572,7 +659,7 @@ onMounted(async () => {
       />
     </div>
 
-    <div class="credit__data-wrapper" v-if="enabledFirstPayment">
+    <div class="credit__data-wrapper credit__data-wrapper_unite" v-if="enabledFirstPayment">
       <UiInput
         v-if="firstPaymentType === 'currency'"
         :label="inputOptions?.firstPaymentCurrency?.title"
@@ -600,6 +687,7 @@ onMounted(async () => {
       <UiSelect
         :select-data="selectDataFirstPayType"
         @changed-value="changeFirstPayType"
+        classes="grow"
       ></UiSelect>
     </div>
 
@@ -631,6 +719,7 @@ onMounted(async () => {
       <UiSelect
         :select-data="selectDataTypeTime"
         @changed-value="changeTypeTime"
+        classes="grow"
       />
     </div>
 
@@ -661,11 +750,10 @@ onMounted(async () => {
     <div class="credit__data-wrapper" v-if="enabledChangeFirstPay">
       <UiDatePicker
         :date-time="localDateTime"
-        label="Дата первого платежа:"
+        :label="inputOptions?.otherLabels?.labelCalendar"
         :language="inputOptions?.datepickerLanguage"
         @change-timestamp="changeTimestamp"
       />
-
     </div>
 
     <template v-if="enabledEarlyRepayment">
@@ -764,20 +852,19 @@ onMounted(async () => {
 
 $c_base_text: #000000;
 $c_base_text_hover: #ff5e00;
-$c_base_text_selected: #ffffff;
+$c_base_text_selected: #ededed;
 
 
 $c_base_bg_color: #ffffff;
-$c_base_bg_color_hover: #ffffff;
+$c_base_bg_color_hover: #ededed;
 $c_base_bg_color_selected: #ff5e00;
 
 
-$c_base_border_color: #ccc;
+$c_base_border_color: #ededed;
 $c_base_border_color_hover: #ff5e00;
 $c_base_border_color_selected: #ff5e00;
 
 $c_base_error_color: #e80000;
-
 
 $c_base_border_radius: 5px;
 $c_base_border_width: 1px;
@@ -789,11 +876,9 @@ $c_base_border_width: 1px;
   color: $c_base_text;
 }
 
-
 @mixin transition {
   transition: all 0.2s ease-in-out;
 }
-
 
 @mixin style-element-main-wrapper {
   display: flex;
@@ -813,12 +898,11 @@ $c_base_border_width: 1px;
   }
 }
 .credit {
-
-  &-main-wrapper {
+  &__main-wrapper {
     display: flex;
     flex-direction: column;
+    align-items: start;
     width: 100%;
-    margin: 100px;
   }
   &__data {
     &-wrapper {
@@ -828,6 +912,7 @@ $c_base_border_width: 1px;
       align-items: baseline;
       gap: 5px;
       margin: 5px 0;
+      flex-wrap: wrap;
       &_unite {
         @media all and (max-width: 600px) {
           flex-direction: column;
@@ -841,8 +926,7 @@ $c_base_border_width: 1px;
     align-items: flex-start;
     display: flex;
     gap: 5px;
-    flex: 1;
-    max-width: 300px;
+    width: 300px;
   }
 
   &__unit {
@@ -880,15 +964,15 @@ $c_base_border_width: 1px;
     align-items: center;
     text-align: center;
     padding: 21px 25px;
-    &:hover{
+    &:hover {
       cursor: pointer;
       background-color: $c_base_bg_color_hover;
       color: $c_base_text_hover;
     }
     &_remove {
-      background: $c_base_bg_color_selected;
-      color: $c_base_text_selected;
+      color: $c_base_text_hover;
       padding: 18px 10px;
+      height: 30px;
     }
     @media all and (max-width: 480px) {
       padding: 10px;
@@ -900,8 +984,48 @@ $c_base_border_width: 1px;
     table-layout: fixed;
     width: 100%;
     border-collapse: collapse;
-    margin: 50px auto;
+    margin: 50px 0;
+
+    &_info {
+      max-width: 600px;
+    }
+    @media all and (max-width: 1000px){
+      &_adaptive {
+        .credit__thead,
+        .credit__tbody,
+        .credit__th {
+          display: block;
+        }
+
+        .credit__thead {
+          float: left;
+        }
+        .credit__tbody {
+          overflow-x: auto;
+        }
+        .credit__tr {
+          display: table-cell;
+        }
+        .credit__th,
+        .credit__th:last-child,
+        .credit__th:first-child{
+          border: none;
+          border-right: $c_base_border_width solid $c_base_text;
+          border-bottom: $c_base_border_width solid $c_base_text;
+
+        }
+        .credit__td {
+          display: block;
+          white-space: nowrap;
+          border: none;
+          border-right: $c_base_border_width solid $c_base_text;
+          border-bottom: $c_base_border_width solid $c_base_text;
+        }
+      }
+    }
   }
+
+
   &__caption {
     background: $c_base_bg_color;
     border-top: 1px solid $c_base_text;
@@ -922,9 +1046,26 @@ $c_base_border_width: 1px;
     color: $c_base_text_selected
   }
   &__tr {
-    &-repayment td {
+
+    &__tr:nth-child(odd){
+      background: #fff;
+    }
+    &__tr:nth-child(even){
+      background: $c_base_bg_color;
+    }
+    &__tr.credit__tr_last {
       background: $c_base_bg_color_selected;
       color: $c_base_text_selected;
+    }
+
+
+    &-repayment {
+      background: $c_base_bg_color_selected;
+      color: $c_base_text_selected;
+    }
+    &:hover {
+      background: $c_base_bg_color_hover;
+      color: $c_base_text_hover;
     }
   }
 
@@ -932,26 +1073,16 @@ $c_base_border_width: 1px;
     padding: 5px 10px;
     border: $c_base_border_width solid $c_base_text;
     text-align: left;
+    min-height: 30px;
     &-repayment {
       text-align: center;
     }
   }
 
-  &__table tbody .credit__tr:nth-child(odd){
-    background: #fff;
-  }
-  &__table tbody .credit__tr:nth-child(even){
-    background: $c_base_bg_color;
-  }
-  &__table tbody .credit__tr:last-child {
-    background: $c_base_bg_color_selected;
-    color: $c_base_text_selected;
-  }
-
-  &__table tr td:first-child, &__table tr th:first-child {
+  &__th:first-child {
     border-left: none;
   }
-  &__table tr td:last-child, &__table tr th:last-child {
+  &__th:last-child {
     border-right: none;
   }
 
@@ -967,9 +1098,11 @@ $c_base_border_width: 1px;
     display: flex;
     &-group-data {
       display: flex;
-      width: 100%;
       align-items: center;
-
+      flex: 1 0 auto;
+      &.grow {
+        flex-grow: 4;
+      }
       @media all and (max-width: 600px) {
         flex-direction: column;
         align-items: start;
@@ -1161,7 +1294,7 @@ $c_base_border_width: 1px;
       &-wrapper {
         cursor: pointer;
         position: relative;
-        min-width: 220px;
+        min-width: 150px;
         @media all and (max-width: 480px) {
           width: 100%;
         }
@@ -1193,7 +1326,7 @@ $c_base_border_width: 1px;
         justify-content: space-between;
         text-align: start;
         position: relative;
-        @media all and (max-width: 360px) {
+        @media all and (max-width: 480px) {
           padding: 10px 50px 10px 10px;
         }
         &:hover {
@@ -1276,7 +1409,7 @@ $c_base_border_width: 1px;
 .calc__form-for-result {
   textarea {
     &#teleport {
-      //display: none;
+      display: none;
     }
   }
 }

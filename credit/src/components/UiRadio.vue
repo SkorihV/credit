@@ -6,7 +6,6 @@ import {
   computed,
 } from "vue";
 
-
 const emits = defineEmits(["changedValue"]);
 const props = defineProps({
   radioData: {
@@ -34,7 +33,6 @@ const currentSelectedValue = computed(() => {
   return props.radioData[selectedValueInRadio.value]?.radioValue
 })
 
-
 const isExistLabel = computed(() => {
   return Boolean(props.label?.toString()?.length);
 });
@@ -42,7 +40,6 @@ const isExistLabel = computed(() => {
 const isExistData = computed(() => {
   return Boolean(props.radioData?.length)
 })
-
 
 function selectedCurrentRadio(index) {
     selectedValueInRadio.value = index;
@@ -76,7 +73,6 @@ function changeValue(eventType = "click") {
                 </div>
               </div>
             </div>
-
           </div>
         </template>
       </div>

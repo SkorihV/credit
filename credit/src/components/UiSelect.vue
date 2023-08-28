@@ -7,9 +7,7 @@ import {
   computed,
 } from "vue";
 
-
 import { useEventListener } from "@/composables/useEventsListener";
-
 
 const emits = defineEmits(["changedValue"]);
 const props = defineProps({
@@ -20,12 +18,13 @@ const props = defineProps({
   label: {
     type: String
   },
+  classes: {
+    type: String,
+    default: ""
+  }
 });
 
-
-
 const isOpen = ref(true);
-// const currentOption = ref(null);
 const currentIndexOption = ref(null);
 
 const maxWidthSelectList = ref(null);
@@ -35,13 +34,8 @@ const changeElement = ref(null);
 const parentRef = ref(null);
 const selectRef = ref(null);
 
-
 const isExistLabel = computed(() => {
   return Boolean(props.label?.toString().length);
-});
-
-const isExistSelectList = computed(() => {
-  return props.selectData.length
 });
 
 const isShowArrow = computed(() => {
@@ -145,6 +139,7 @@ onMounted(() => {
 <template>
   <div
     class="calc__wrapper-group-data"
+    :class="classes"
     ref="parentRef"
   >
     <div
@@ -194,6 +189,5 @@ onMounted(() => {
         </div>
       </div>
     </div>
-
   </div>
 </template>

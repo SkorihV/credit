@@ -15,14 +15,12 @@ const props = defineProps({
     type: String,
     default: 'ru'
   }
-
 })
 const localDateTime = ref(new Date())
 
 const isExistLabel = computed(()=> {
   return Boolean(props.label.length)
 })
-
 function format(date) {
   const day = date.getDate();
   const month = date.getMonth() + 1;
@@ -38,7 +36,6 @@ watch(localDateTime, (newTime) => {
     changeTimestamp(newTime.getTime())
   }
 })
-
 function changeTimestamp(value) {
   return emits('changeTimestamp', value)
 }
@@ -66,7 +63,3 @@ onMounted(() => {
     input-class-name="credit__dp-custom-input"
   />
 </template>
-
-<style scoped>
-
-</style>

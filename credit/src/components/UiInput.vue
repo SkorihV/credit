@@ -6,10 +6,7 @@ import {
   computed,
 } from "vue";
 
-
-import {checkedValueOnVoid} from "@/servises/UtilityServices";
-import {getQueryParam, setQueryParam} from "@/composables/useQueryParam";
-
+import {checkedValueOnVoid, splitNumberIntoHundreds} from "@/servises/UtilityServices";
 
 const emits = defineEmits(["changedValue"]);
 const props = defineProps({
@@ -99,6 +96,10 @@ const props = defineProps({
   queryParamName: {
     type: String,
     default: null
+  },
+  classes: {
+    type: String,
+    default: ''
   }
 });
 const inputFocus = ref(false);
@@ -106,7 +107,6 @@ const focusTimerName = ref(null);
 const localInputBufferValue = ref(null);
 const localInputValue = ref(null);
 const nameTimer = ref(null);
-
 
 const isExistLabel = computed(() => {
   return Boolean(props.label?.toString()?.length);
@@ -288,7 +288,6 @@ function resultWitchNumberValid() {
 }
 function changeValue() {
   emits('changedValue', resultValue.value)
-  setQueryParam(props.queryParamName, resultValue.value)
 }
 
 function changeValueWitchTimer(value) {
@@ -347,13 +346,10 @@ function resetNumberValue() {
 }
 
 function addLocalInputBufferValue(value) {
-    localInputBufferValue.value = value.toLocaleString("ru-RU", {
-      useGrouping: true,
-      maximumFractionDigits: 5,
-    });
+    localInputBufferValue.value = splitNumberIntoHundreds(value)
 }
 
-function updatedLocalInputValue(newValue) {
+function updatedLocalInputValue() {
   if (localMin.value > Number(props.inputValue)) {
     localInputValue.value = localMin.value;
     changeValue('updatedLocalInputValue + localMin');
@@ -370,22 +366,8 @@ watch(() => props.inputValue, () => {
     updatedLocalInputValue('watch props.inputValue')
 })
 
-watch(localInputValue, (q) => {
-  console.log(q)
-})
-
-
 onMounted(() => {
-  const newValue = getQueryParam(props.queryParamName)
-  if (newValue !== null && !isNaN(newValue)) {
-    localInputValue.value = parseFloat(newValue)
-    setTimeout(() => {
-      changeValue()
-
-    }, 100)
-  } else {
-    updatedLocalInputValue()
-  }
+  updatedLocalInputValue()
 });
 
 </script>
@@ -393,6 +375,7 @@ onMounted(() => {
 <template>
   <div
     class="calc__wrapper-group-data"
+    :class="classes"
   >
       <div class="credit__label-text" v-if="isExistLabel">
         {{ label }}

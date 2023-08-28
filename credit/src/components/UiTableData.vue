@@ -54,7 +54,6 @@ const isExistDataTable = computed(() => {
   return Boolean(props.tableData?.length)
 })
 
-
 watch(isExistDataTable, (newValue) => {
   if (!newValue) {
     showTable.value = false
@@ -74,7 +73,7 @@ function toggleOpened() {
 <template>
   <button class="credit__button" @click="toggleOpened">{{otherLabels?.btnToggleTable}}</button>
   <div class="credit__data-wrapper">
-    <table class="credit__table" v-if="showTable">
+    <table class="credit__table credit__table_adaptive" v-if="showTable">
       <caption class="credit__caption" v-if="isCaption">{{otherLabels?.caption}}</caption>
       <thead class="credit__thead">
         <tr class="credit__tr">
@@ -87,7 +86,7 @@ function toggleOpened() {
           <th class="credit__th" v-if="isEarlyRepayment">{{otherLabels?.repayment}}</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody class="credit__tbody">
       <tr class="credit__tr" :class="{'credit__tr-repayment':ceil.earlyRepayment > 0}" v-for="(ceil, idx) in tableData" :key="idx">
         <template v-if="isEarlyRepayment && ceil.earlyRepayment > 0">
           <td class="credit__td">{{ceil.id}}</td>
@@ -107,7 +106,7 @@ function toggleOpened() {
         </template>
 
       </tr>
-      <tr class="credit__tr">
+      <tr class="credit__tr credit__tr_last">
         <td class="credit__td">∑</td>
         <td class="credit__td">-</td>
         <td class="credit__td" v-if="isPay">{{totalData.pay.toLocaleString()}}</td>

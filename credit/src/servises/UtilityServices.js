@@ -62,11 +62,25 @@ function aroundCeil(value, factor = 1) {
   return Math.ceil(value * factor) / factor;
 }
 
+/**
+ *
+ * @param value
+ * @returns {string|*}
+ */
+function splitNumberIntoHundreds(value) {
+  return  value ? value.toLocaleString("ru-RU", {
+        useGrouping: true,
+        maximumFractionDigits: 5,
+      })
+      : value
+}
+
 
 
 export {
   decimalAdjust,
   checkedValueOnVoid,
   makeMultiple,
-  aroundCeil
+  aroundCeil,
+  splitNumberIntoHundreds
 };
