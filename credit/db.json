@@ -94,7 +94,8 @@
       "repayment": "Досрочное погашение",
       "btnToggleTable": "Показать таблицу платежей",
       "totalPayment": "Общая сумма платежа:",
-      "labelCalendar": "Дата первого платежа:"
+      "labelFirstTimePay": "Дата первого платежа:",
+      "labelEarlyRepayment": "Сумма досрочного погашения:"
     },
     "textAbove": "",
     "textAfter": "",

@@ -75,8 +75,6 @@ function splitNumberIntoHundreds(value) {
       : value
 }
 
-
-
 export {
   decimalAdjust,
   checkedValueOnVoid,

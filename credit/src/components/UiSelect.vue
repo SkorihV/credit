@@ -26,9 +26,7 @@ const props = defineProps({
 
 const isOpen = ref(true);
 const currentIndexOption = ref(null);
-
 const maxWidthSelectList = ref(null);
-
 const optionList = ref(null);
 const changeElement = ref(null);
 const parentRef = ref(null);

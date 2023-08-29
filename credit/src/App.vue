@@ -1,10 +1,5 @@
 <script setup>
 
-//https://mortgage-calculator.ru/%D1%84%D0%BE%D1%80%D0%BC%D1%83%D0%BB%D0%B0-%D1%80%D0%B0%D1%81%D1%87%D0%B5%D1%82%D0%B0-%D0%B8%D0%BF%D0%BE%D1%82%D0%B5%D0%BA%D0%B8/
-//https://www.calc.ru/kreditnyi-kalkulyator.html
-//https://calcus.ru/kalkulyator-ipoteki
-// https://mobile-testing.ru/loancalc/rachet_dosrochnogo_pogashenia/
-
 import '@vuepic/vue-datepicker/dist/main.css'
 import {ref, computed, reactive, watch, onMounted} from 'vue'
 import {makeMultiple, aroundCeil} from "@/servises/UtilityServices";
@@ -84,7 +79,7 @@ const currentTypeCredit = ref('A')
  *  дата первого платежа
  * @type {Ref<UnwrapRef<number>>}
  */
-const dateTime = ref(0)
+const dateFirstTimePay = ref(0)
 /**
  * данные для таблицы платежей
  * @type {Ref<UnwrapRef<*[]>>}
@@ -323,7 +318,36 @@ const computedStartCreditSum = computed(() => {
  * @type {ComputedRef<number>}
  */
 const monthlyPaymentAnnuity = computed(() =>  aroundCeil((computedStartCreditSum.value  * annuityCoefficient.value), 100))
-const monthlyPaymentDifferentiated = computed(() => tableData.value[0]?.pay ? `${tableData.value[0]?.pay} / ${tableData.value[tableData.value.length - 1].pay}` : null)
+
+const firstPay = computed(() => {
+  let resultPay = null;
+  let length = tableData.value?.length;
+
+  for (let i = 0; i < length; i++) {
+    const currentItem = tableData.value[i]
+    if (currentItem?.earlyRepayment !== null && currentItem?.pay > 0) {
+      resultPay = currentItem;
+      break
+    }
+  }
+  return resultPay
+})
+
+const lastPay = computed(() => {
+  let resultPay = null;
+  let length = tableData.value?.length - 1;
+
+  for (let i = length; i > 0; i--) {
+    const currentItem = tableData.value[i]
+    if (currentItem?.earlyRepayment !== null && currentItem?.pay > 0) {
+      resultPay = currentItem;
+      break
+    }
+  }
+  return resultPay
+})
+
+const monthlyPaymentDifferentiated = computed(() => firstPay.value && lastPay.value  ? `${firstPay.value?.pay} / ${lastPay.value?.pay}` : null)
 
 
 /**
@@ -331,10 +355,10 @@ const monthlyPaymentDifferentiated = computed(() => tableData.value[0]?.pay ? `$
  * @type {ComputedRef<number>}
  */
 const localDateTime = computed(() => {
-  if (!dateTime.value) {
+  if (!dateFirstTimePay.value) {
     return Math.floor(Date.now())
   }
-  return dateTime.value
+  return dateFirstTimePay.value
 
 })
 
@@ -585,7 +609,7 @@ function changeTypeTime (value) {
 }
 
 function changeTimestamp(value) {
-  dateTime.value = value
+  dateFirstTimePay.value = value
 }
 
 function addEarlyRepayment() {
@@ -750,7 +774,7 @@ onMounted(async () => {
     <div class="credit__data-wrapper" v-if="enabledChangeFirstPay">
       <UiDatePicker
         :date-time="localDateTime"
-        :label="inputOptions?.otherLabels?.labelCalendar"
+        :label="inputOptions?.otherLabels?.labelFirstTimePay"
         :language="inputOptions?.datepickerLanguage"
         @change-timestamp="changeTimestamp"
       />
@@ -792,6 +816,7 @@ onMounted(async () => {
 
     <result-info-block
       :enabled-first-payment="enabledFirstPayment"
+      :date-first-time-pay="dateFirstTimePay"
       :first-payment-currency="firstPaymentCurrency"
       :first-payment-percent="firstPaymentPercent"
       :type-time="typeTime"
@@ -996,7 +1021,6 @@ $c_base_border_width: 1px;
         .credit__th {
           display: block;
         }
-
         .credit__thead {
           float: left;
         }
@@ -1005,6 +1029,7 @@ $c_base_border_width: 1px;
         }
         .credit__tr {
           display: table-cell;
+          border-top: 1px solid $c_base_text;
         }
         .credit__th,
         .credit__th:last-child,
@@ -1012,7 +1037,9 @@ $c_base_border_width: 1px;
           border: none;
           border-right: $c_base_border_width solid $c_base_text;
           border-bottom: $c_base_border_width solid $c_base_text;
-
+        }
+        .credit__th:first-child {
+          width: auto;
         }
         .credit__td {
           display: block;
@@ -1025,10 +1052,8 @@ $c_base_border_width: 1px;
     }
   }
 
-
   &__caption {
     background: $c_base_bg_color;
-    border-top: 1px solid $c_base_text;
     font-weight: bold;
     padding: 5px;
     text-align: center;
@@ -1043,21 +1068,22 @@ $c_base_border_width: 1px;
     padding: 5px;
     background: $c_base_bg_color_selected;
     border: $c_base_border_width solid $c_base_text;
-    color: $c_base_text_selected
+    color: $c_base_text_selected;
+    &:first-child {
+      width: 80px;
+    }
   }
   &__tr {
-
-    &__tr:nth-child(odd){
+    &:nth-child(odd){
       background: #fff;
     }
-    &__tr:nth-child(even){
+    &r:nth-child(even){
       background: $c_base_bg_color;
     }
-    &__tr.credit__tr_last {
+    &.credit__tr_last {
       background: $c_base_bg_color_selected;
       color: $c_base_text_selected;
     }
-
 
     &-repayment {
       background: $c_base_bg_color_selected;
@@ -1079,19 +1105,11 @@ $c_base_border_width: 1px;
     }
   }
 
-  &__th:first-child {
-    border-left: none;
-  }
-  &__th:last-child {
-    border-right: none;
-  }
-
   &__dp-custom-input {
     padding-top: 18px;
     padding-bottom: 18px;
   }
 }
-
 
 .calc {
   &__wrapper {
@@ -1114,14 +1132,12 @@ $c_base_border_width: 1px;
   &__input {
     &-wrapper {
       @include style-element-main-wrapper;
-
       &-data {
         display: flex;
         align-items: center;
         position: relative;
         gap: 2px;
       }
-
     }
 
     &-item {
@@ -1213,7 +1229,6 @@ $c_base_border_width: 1px;
       @media all and (max-width: 360px) {
         flex: 1 1 100%;
       }
-
 
       &:hover {
         background-color: $c_base_bg_color_hover;

@@ -91,7 +91,7 @@ function toggleOpened() {
         <template v-if="isEarlyRepayment && ceil.earlyRepayment > 0">
           <td class="credit__td">{{ceil.id}}</td>
           <td class="credit__td" v-if="isDate">{{ceil.date}}</td>
-          <td class="credit__td credit__td-repayment" colspan="3" v-if="isEarlyRepayment">{{ceil.earlyRepayment.toLocaleString()}}</td>
+          <td class="credit__td credit__td-repayment" colspan="3" v-if="isEarlyRepayment">{{otherLabels?.repayment}} : {{ceil.earlyRepayment.toLocaleString()}}</td>
           <td class="credit__td" v-if="isBalance">{{ceil.balance.toLocaleString()}}</td>
           <td class="credit__td" v-if="isEarlyRepayment">{{ceil.earlyRepayment.toLocaleString()}}</td>
         </template>
@@ -112,14 +112,10 @@ function toggleOpened() {
         <td class="credit__td" v-if="isPay">{{totalData.pay.toLocaleString()}}</td>
         <td class="credit__td" v-if="isPercent">{{totalData.percent.toLocaleString()}}</td>
         <td class="credit__td" v-if="isMainDebt">{{totalData.mainDebt.toLocaleString()}}</td>
-        <td class="credit__td" v-if="isBalance"></td>
+        <td class="credit__td" v-if="isBalance">-</td>
         <td class="credit__td" v-if="isEarlyRepayment">{{totalData.earlyRepayment ? totalData.earlyRepayment.toLocaleString() : '-'}}</td>
       </tr>
       </tbody>
     </table>
   </div>
 </template>
-
-<style scoped>
-
-</style>

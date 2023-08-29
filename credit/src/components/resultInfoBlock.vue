@@ -8,6 +8,10 @@ const props = defineProps({
     type: Number,
     default: null
   },
+  dateFirstTimePay: {
+    type: Number,
+    default: Date.now()
+  },
   monthlyPaymentAnnuity: {
     type: Number,
     default: null
@@ -91,8 +95,11 @@ const props = defineProps({
   currency: {
     type: String,
     default: 'руб'
+  },
+  language: {
+    type: String,
+    default: 'ru'
   }
-
 })
 
 const formElement = ref(null);
@@ -111,10 +118,14 @@ const isTeleportExist = computed(() => {
   return Boolean(teleportField.value)
 })
 
+const firstDateString = computed(() => {
+  let date = new Date(props.dateFirstTimePay)
+  return `${date.toLocaleString(props.language, { month: 'long' })} ${date.getFullYear()}`
+})
+
 function findForm() {
   const form = document.querySelector("#calc__form-for-result");
   formElement.value = form ? form : null;
-
 }
 
 function findTeleportField() {
@@ -135,6 +146,7 @@ function setReadOnlyForTeleportField() {
 
 const teleportResultText = computed(() => {
   let result = ''
+  result += `${props.otherLabels?.labelFirstTimePay} ${firstDateString.value}\n`
   result += `${props.labelSum} ${splitNumberIntoHundreds(props.startCreditSum)} ${props.currency}\n`
 
   if (props.enabledFirstPayment) {
@@ -156,8 +168,9 @@ const teleportResultText = computed(() => {
     result += `${props.otherLabels?.pay} (${props.nameTypeCredit}): ${splitNumberIntoHundreds(props.monthlyPaymentDifferentiated)} ${props.currency}\n`
   }
 
-  result += `${props.otherLabels?.totalPayment} ${splitNumberIntoHundreds(props.totalData?.pay)} ${props.currency}\n`
   result += `${props.otherLabels?.percent}  ${splitNumberIntoHundreds(overpaymentAmount.value)} ${props.currency}\n`
+  result += `${props.otherLabels?.labelEarlyRepayment}  ${splitNumberIntoHundreds(props.totalData?.earlyRepayment)} ${props.currency}\n`
+  result += `${props.otherLabels?.totalPayment} ${splitNumberIntoHundreds(props.totalData?.pay)} ${props.currency}\n`
 
   return result
 })
@@ -173,9 +186,12 @@ onMounted(() => {
 </script>
 
 <template>
-
   <table class="credit__table credit__table_info">
     <tbody class="credit__tbody">
+      <tr class="credit__tr">
+        <td class="credit__td">{{ otherLabels?.labelFirstTimePay }}</td>
+        <td class="credit__td">{{firstDateString}}</td>
+      </tr>
       <tr class="credit__tr">
         <td class="credit__td">{{ labelSum }}</td>
         <td class="credit__td">{{splitNumberIntoHundreds(startCreditSum)}} {{currency}}</td>
@@ -213,114 +229,19 @@ onMounted(() => {
         <td class="credit__td">{{splitNumberIntoHundreds(monthlyPaymentDifferentiated)}} {{currency}}</td>
       </tr>
       <tr class="credit__tr">
-        <td class="credit__td">{{otherLabels?.totalPayment}}</td>
-        <td class="credit__td">{{splitNumberIntoHundreds(totalData.pay)}} {{currency}}</td>
-      </tr>
-      <tr class="credit__tr">
         <td class="credit__td">{{otherLabels?.percent}}</td>
         <td class="credit__td">{{splitNumberIntoHundreds(overpaymentAmount)}} {{currency}}</td>
       </tr>
+      <tr class="credit__tr" v-if="totalData.earlyRepayment">
+        <td class="credit__td">{{otherLabels?.labelEarlyRepayment}}</td>
+        <td class="credit__td">{{splitNumberIntoHundreds(totalData.earlyRepayment)}} {{currency}}</td>
+      </tr>
+      <tr class="credit__tr">
+        <td class="credit__td">{{otherLabels?.totalPayment}}</td>
+        <td class="credit__td">{{splitNumberIntoHundreds(totalData.pay)}} {{currency}}</td>
+      </tr>
     </tbody>
   </table>
-
-
-<!--  <div class="credit__info-block-wrapper">-->
-<!--    <div class="credit__info-block-item">-->
-<!--      <div class="credit__info-block-title">-->
-<!--        {{ labelSum }}-->
-<!--      </div>-->
-<!--      <div class="credit__info-block-value">-->
-<!--        {{splitNumberIntoHundreds(startCreditSum)}} {{currency}}-->
-<!--      </div>-->
-<!--    </div>-->
-
-<!--    <template v-if="enabledFirstPayment">-->
-<!--      <div class="credit__info-block-item" >-->
-<!--        <div class="credit__info-block-title">-->
-<!--          {{labelCurrency}}-->
-<!--        </div>-->
-<!--        <div class="credit__info-block-value">-->
-<!--          {{splitNumberIntoHundreds(firstPaymentCurrency)}} {{currency}}-->
-<!--        </div>-->
-<!--      </div>-->
-<!--      <div class="credit__info-block-item">-->
-<!--        <div class="credit__info-block-title">-->
-<!--          {{labelPercent}}-->
-<!--        </div>-->
-<!--        <div class="credit__info-block-value">-->
-<!--          {{firstPaymentPercent}}-->
-<!--        </div>-->
-<!--      </div>-->
-<!--    </template>-->
-
-<!--    <div class="credit__info-block-item" v-if="typeTime === 'year'">-->
-<!--      <div class="credit__info-block-title">-->
-<!--        {{labelYear}}-->
-<!--      </div>-->
-<!--      <div class="credit__info-block-value">-->
-<!--        {{timeCreditYear}}-->
-<!--      </div>-->
-<!--    </div>-->
-<!--    <div class="credit__info-block-item" v-if="typeTime === 'month'">-->
-<!--      <div class="credit__info-block-title">-->
-<!--        {{labelMonth}}-->
-<!--      </div>-->
-<!--      <div class="credit__info-block-value">-->
-<!--        {{timeCreditMonth}}-->
-<!--      </div>-->
-<!--    </div>-->
-
-<!--    <div class="credit__info-block-item">-->
-<!--      <div class="credit__info-block-title">-->
-<!--        {{labelInterestRate}}-->
-<!--      </div>-->
-<!--      <div class="credit__info-block-value">-->
-<!--        {{interestRate}}-->
-<!--      </div>-->
-<!--    </div>-->
-
-<!--    <div class="credit__info-block-item" v-if="typeTime === 'month'">-->
-<!--      <div class="credit__info-block-title">-->
-<!--        {{labelTypeCredit}}-->
-<!--      </div>-->
-<!--      <div class="credit__info-block-value">-->
-<!--        {{nameTypeCredit}}-->
-<!--      </div>-->
-<!--    </div>-->
-
-<!--    <div class="credit__info-block-item" v-if="typeCredit === 'A'">-->
-<!--      <div class="credit__info-block-title">-->
-<!--        {{otherLabels?.pay}} ({{nameTypeCredit}})-->
-<!--      </div>-->
-<!--      <div class="credit__info-block-value">-->
-<!--        {{splitNumberIntoHundreds(monthlyPaymentAnnuity)}} {{currency}}-->
-<!--      </div>-->
-<!--    </div>-->
-<!--    <div class="credit__info-block-item" v-if="typeCredit === 'D'">-->
-<!--      <div class="credit__info-block-title">-->
-<!--        {{otherLabels?.pay}} ({{nameTypeCredit}})-->
-<!--      </div>-->
-<!--      <div class="credit__info-block-value">-->
-<!--        {{splitNumberIntoHundreds(monthlyPaymentDifferentiated)}} {{currency}}-->
-<!--      </div>-->
-<!--    </div>-->
-<!--    <div class="credit__info-block-item">-->
-<!--      <div class="credit__info-block-title">-->
-<!--        {{otherLabels?.totalPayment}}-->
-<!--      </div>-->
-<!--      <div class="credit__info-block-value">-->
-<!--        {{splitNumberIntoHundreds(totalData.pay)}} {{currency}}-->
-<!--      </div>-->
-<!--    </div>-->
-<!--    <div class="credit__info-block-item">-->
-<!--      <div class="credit__info-block-title">-->
-<!--        {{otherLabels?.percent}}-->
-<!--      </div>-->
-<!--      <div class="credit__info-block-value">-->
-<!--        {{splitNumberIntoHundreds(overpaymentAmount)}} {{currency}}-->
-<!--      </div>-->
-<!--    </div>-->
-<!--  </div>-->
   <teleport v-if="isTeleportExist" to="#teleport">
     {{ teleportResultText }}
   </teleport>

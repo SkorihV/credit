@@ -77,5 +77,4 @@ function changeValue(eventType = "click") {
         </template>
       </div>
   </div>
-
 </template>

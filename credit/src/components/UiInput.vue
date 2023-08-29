@@ -143,7 +143,6 @@ const showControlsButton = computed(() => {
   return props.controls && !props.isDisabled
 });
 
-
 const resultValue = computed(() => {
   return resultWitchNumberValid();
 });
@@ -202,12 +201,6 @@ const isErrorClass = computed(() => {
 const isErrorEmpty = computed(() => {
   return !localInputValue.value?.toString().length;
 });
-
-// const needFixedResult = computed(() => {
-//   return Boolean(
-//     (props.discreteStep || props.controls) && onlyIntegerValue.value
-//   );
-// });
 
 const numberSignsAfterComma = computed(() => {
   return props.step.toString().includes(".") && !onlyIntegerValue.value
