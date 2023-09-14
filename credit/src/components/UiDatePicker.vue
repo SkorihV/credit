@@ -14,6 +14,10 @@ const props = defineProps({
   language: {
     type: String,
     default: 'ru'
+  },
+  classes: {
+    type: String,
+    default: ''
   }
 })
 const localDateTime = ref(new Date())
@@ -47,19 +51,21 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="credit__label-text" v-if="isExistLabel">{{label}}</div>
-  <VueDatePicker
-    v-model="localDateTime"
-    :locale="language"
-    select-text="Выбрать"
-    cancel-text="Отмена"
-    now-button-label="Сегодня"
-    placeholder="Выберите дату"
-    auto-apply
-    :min-date="new Date()"
-    :format="format"
-    :enable-seconds="false"
-    :enable-time-picker="false"
-    input-class-name="credit__dp-custom-input"
-  />
+  <div class="calc__wrapper-group-data" :class="classes">
+    <div class="credit__label-text" v-if="isExistLabel">{{label}}</div>
+    <VueDatePicker
+      v-model="localDateTime"
+      :locale="language"
+      select-text="Выбрать"
+      cancel-text="Отмена"
+      now-button-label="Сегодня"
+      placeholder="Выберите дату"
+      auto-apply
+      :min-date="new Date()"
+      :format="format"
+      :enable-seconds="false"
+      :enable-time-picker="false"
+      input-class-name="credit__dp-custom-input"
+    />
+  </div>
 </template>

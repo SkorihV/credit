@@ -405,6 +405,7 @@ function initCalculate() {
   let localMonthlyPaymentAnnuity = monthlyPaymentAnnuity.value
   let date = new Date(localDateTime.value)
   let earlyRepayment = 0
+  let id = 1
 
   for (let i = 1; i <= amountMonth.value; i++) {
     let pay = 0
@@ -417,11 +418,11 @@ function initCalculate() {
     }
 
     if(earlyRepayment) {
-      let newAmountMonth = amountMonth.value - i + 1
+      let newAmountMonth = amountMonth.value - id + 1
       currentSumCredit -= earlyRepayment
 
       tableData.value.push({
-        id: i,
+        id: id,
         date: `${date.toLocaleString(inputOptions.value?.datepickerLanguage, { month: 'long' })} ${date.getFullYear()}`,
         pay: null,
         percent: null,
@@ -429,6 +430,7 @@ function initCalculate() {
         balance: currentSumCredit,
         earlyRepayment
       })
+      id++
 
       if (prepaymentType.value === "pay") {
         localMonthlyPaymentAnnuity = getMonthlyPaymentAnnuity(currentSumCredit, newAmountMonth)
@@ -438,7 +440,7 @@ function initCalculate() {
     if (currentTypeCredit.value === 'A') {
 
       if(earlyRepayment) {
-        const newAmountMonth = amountMonth.value - i + 1
+        const newAmountMonth = amountMonth.value - id + 1
         if (prepaymentType.value === "pay") {
           localMonthlyPaymentAnnuity = getMonthlyPaymentAnnuity(currentSumCredit, newAmountMonth)
         }
@@ -462,8 +464,8 @@ function initCalculate() {
     balance = currentSumCredit >= 0 ? currentSumCredit : 0
 
     tableData.value.push({
-      id: i,
-      date: `${date.toLocaleString(inputOptions.value?.datepickerLanguage, { month: 'long' })} ${date.getFullYear()} г`,
+      id: id,
+      date: `${date.toLocaleString(inputOptions.value?.datepickerLanguage, { month: 'long' })} ${date.getFullYear()}`,
       pay,
       percent,
       mainDebt,
@@ -476,7 +478,7 @@ function initCalculate() {
     totalData.percent += percent
     totalData.earlyRepayment += earlyRepayment
     date.setMonth(date.getMonth() + 1)
-
+    id++
     if (balance <= 5 ) {
       break
     }
@@ -767,6 +769,7 @@ onMounted(async () => {
       <UiRadio
         :label="inputOptions?.creditType?.title"
         :radioData="localRadioDataTypeCredit"
+        classes="credit__wrapper-group-data_shift"
         @changed-value="changeTypeCredit"
       />
     </div>
@@ -776,6 +779,7 @@ onMounted(async () => {
         :date-time="localDateTime"
         :label="inputOptions?.otherLabels?.labelFirstTimePay"
         :language="inputOptions?.datepickerLanguage"
+        classes="credit__wrapper-group-data_shift"
         @change-timestamp="changeTimestamp"
       />
     </div>
@@ -788,6 +792,7 @@ onMounted(async () => {
         <ui-select
           :select-data="selectDataPrepaymentType"
           :label="inputOptions?.earlyRepayment?.labelRepaymentType"
+          classes="credit__wrapper-group-data_shift"
           @changed-value="chanePrepaymentType"
         />
       </div>
@@ -795,6 +800,7 @@ onMounted(async () => {
         <UiDatePicker
           :date-time="data.timestamp"
           :language="inputOptions?.datepickerLanguage"
+          classes="credit__wrapper-group-data_date-picker"
           @change-timestamp="changeDateEarlyRepayment({index: idx, timestamp: $event, value: null})"
       />
         <UiInput
@@ -803,9 +809,10 @@ onMounted(async () => {
           data-type="onlyInteger"
           :min="inputOptions?.earlyRepayment?.min"
           :max="inputOptions?.earlyRepayment?.max"
-          :step="inputOptions?.earlyRepayment?.earlyRepayment.step"
+          :step="inputOptions?.earlyRepayment?.step"
           :discrete-step="inputOptions?.earlyRepayment?.discreteStep"
           :controls="inputOptions?.earlyRepayment?.controls"
+          classes="removeSlot"
         >
           <template #button>
             <div class="credit__button credit__button_remove" @click="removeDateEarlyRepayment(idx)" >X</div>
@@ -848,7 +855,6 @@ onMounted(async () => {
         :other-labels="inputOptions?.otherLabels"
       />
   </div>
-
 </template>
 
 
@@ -905,17 +911,6 @@ $c_base_border_width: 1px;
   transition: all 0.2s ease-in-out;
 }
 
-@mixin style-element-main-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  position: relative;
-  width: 100%;
-  @media (max-width: 480px) {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-}
 
 #credit_calculator {
   .dp__main {
@@ -934,13 +929,13 @@ $c_base_border_width: 1px;
       display: flex;
       flex-direction: row;
       justify-content: start;
-      align-items: baseline;
+      align-items: center;
       gap: 5px;
       margin: 5px 0;
       flex-wrap: wrap;
       &_unite {
         @media all and (max-width: 600px) {
-          flex-direction: column;
+          align-items: flex-end;
         }
       }
     }
@@ -976,7 +971,10 @@ $c_base_border_width: 1px;
 
     }
   }
-
+  &__button-wrapper {
+    display: flex;
+    gap: 8px;
+  }
   &__button {
     border-radius: $c_base_border_radius;
     background-color: $c_base_bg_color;
@@ -989,6 +987,7 @@ $c_base_border_width: 1px;
     align-items: center;
     text-align: center;
     padding: 21px 25px;
+    box-sizing: border-box;
     &:hover {
       cursor: pointer;
       background-color: $c_base_bg_color_hover;
@@ -1003,6 +1002,25 @@ $c_base_border_width: 1px;
       padding: 10px;
     }
   }
+  &__button-toggle-accordion {
+    display: flex;
+    height: 24px;
+    width: 40px;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    &.isOpen {
+      align-items: baseline;
+    }
+  }
+
+  &__arrow {
+    width: 100%;
+    height: 24px;
+    font-size: 20px;
+    line-height: 20px;
+    font-weight: 900;
+  }
 
   &__table {
     border: 1px solid #eee;
@@ -1010,11 +1028,13 @@ $c_base_border_width: 1px;
     width: 100%;
     border-collapse: collapse;
     margin: 50px 0;
-
+    *{
+      box-sizing: border-box;
+    }
     &_info {
       max-width: 600px;
     }
-    @media all and (max-width: 1000px){
+    @media all and (max-width: 770px){
       &_adaptive {
         .credit__thead,
         .credit__tbody,
@@ -1037,9 +1057,6 @@ $c_base_border_width: 1px;
           border: none;
           border-right: $c_base_border_width solid $c_base_text;
           border-bottom: $c_base_border_width solid $c_base_text;
-        }
-        .credit__th:first-child {
-          width: auto;
         }
         .credit__td {
           display: block;
@@ -1069,9 +1086,9 @@ $c_base_border_width: 1px;
     background: $c_base_bg_color_selected;
     border: $c_base_border_width solid $c_base_text;
     color: $c_base_text_selected;
-    &:first-child {
-      width: 80px;
-    }
+    //&:first-child {
+    //  width: 80px;
+    //}
   }
   &__tr {
     &:nth-child(odd){
@@ -1085,7 +1102,7 @@ $c_base_border_width: 1px;
       color: $c_base_text_selected;
     }
 
-    &-repayment {
+    &.credit__tr-repayment {
       background: $c_base_bg_color_selected;
       color: $c_base_text_selected;
     }
@@ -1105,6 +1122,28 @@ $c_base_border_width: 1px;
     }
   }
 
+  &__table_alternative {
+    margin: 1px auto;
+    .credit {
+      &__caption {
+        font-weight: bold;
+        padding: 5px;
+        background: $c_base_bg_color_selected;
+        border: $c_base_border_width solid $c_base_text;
+        color: $c_base_text_selected;
+
+        &-wrapper {
+          display: flex;
+          justify-content: space-between;
+          flex: 1 1 100%;
+        }
+      }
+      &__th {
+        width: 50%;
+      }
+    }
+  }
+
   &__dp-custom-input {
     padding-top: 18px;
     padding-bottom: 18px;
@@ -1117,33 +1156,44 @@ $c_base_border_width: 1px;
     &-group-data {
       display: flex;
       align-items: center;
-      flex: 1 0 auto;
+      flex: 1 1 auto;
+      position: relative;
+      gap: 8px;
+
+      &.credit__wrapper-group-data_shift {
+        gap: 16px;
+      }
+      &.credit__wrapper-group-data_date-picker {
+        width: calc(50% - 42px);
+      }
       &.grow {
         flex-grow: 4;
       }
-      @media all and (max-width: 600px) {
-        flex-direction: column;
-        align-items: start;
-        gap: 5px;
+      &:not(.removeSlot) {
+        @media all and (max-width: 600px) {
+          flex-direction: column;
+          align-items: start;
+          gap: 5px;
+        }
       }
     }
   }
 
   &__input {
     &-wrapper {
-      @include style-element-main-wrapper;
       &-data {
         display: flex;
         align-items: center;
         position: relative;
         gap: 2px;
+        flex-wrap: wrap;
       }
     }
 
     &-item {
       font-size: 16px;
       line-height: 20px;
-      padding: 20px 35px;
+      padding: 20px;
       max-width: 304px;
       background: $c_base_bg_color;
       color: $c_base_text;
@@ -1202,7 +1252,6 @@ $c_base_border_width: 1px;
 
   &__radio {
     &-wrapper {
-      @include style-element-main-wrapper;
       &-buttons {
         display: flex;
         flex-wrap: wrap;
@@ -1214,7 +1263,7 @@ $c_base_border_width: 1px;
       position: relative;
       align-items: center;
       justify-content: center;
-      padding: 20px 30px;
+      padding: 20px;
       background-color: $c_base_bg_color;
       border-radius: $c_base_border_radius;
       border: $c_base_border_width solid $c_base_border_color;
@@ -1277,11 +1326,6 @@ $c_base_border_width: 1px;
 
   &__select {
     &-wrapper {
-      @include style-element-main-wrapper;
-      &.column {
-        flex-direction: column;
-        align-items: flex-start;
-      }
       &.open {
         .calc__select-arrow {
           border-color: $c_base_text;
@@ -1292,6 +1336,7 @@ $c_base_border_width: 1px;
           border-color: $c_base_border_color;
           border-bottom-left-radius: 0;
           border-bottom-right-radius: 0;
+          align-items: center;
         }
         .calc__select-option-wrapper {
           border-color: $c_base_border_color;
@@ -1331,18 +1376,19 @@ $c_base_border_width: 1px;
         border-radius: $c_base_border_radius;
         border: $c_base_border_width solid $c_base_border_color;
         background-color: $c_base_bg_color;
-        padding: 20px 50px 20px 40px;
+        padding: 20px 30px 20px 20px;
         font-weight: 400;
         font-size: 16px;
         line-height: 20px;
         gap: 20px;
         display: flex;
-        align-items: center;
+        align-items: baseline;
         justify-content: space-between;
         text-align: start;
         position: relative;
+        white-space: nowrap;
         @media all and (max-width: 480px) {
-          padding: 10px 50px 10px 10px;
+          padding: 10px 30px 10px 10px;
         }
         &:hover {
           border-color: $c_base_border_color_hover;
@@ -1363,7 +1409,7 @@ $c_base_border_width: 1px;
           transform: rotate(45deg);
           -webkit-transform: rotate(45deg);
           position: absolute;
-          right: 30px;
+          right: 10px;
         }
       }
     }
@@ -1399,9 +1445,8 @@ $c_base_border_width: 1px;
         align-items: center;
         gap: 20px;
         text-align: start;
-        padding: 10px 50px 10px 40px;
+        padding: 10px 30px 10px 20px;
         cursor: pointer;
-        width: 100%;
         position: relative;
         &-text {
           font-weight: 400;
@@ -1409,6 +1454,7 @@ $c_base_border_width: 1px;
           line-height: 20px;
           text-align: start;
           color: $c_base_text;
+          white-space: nowrap;
         }
         &:hover {
           background-color: $c_base_bg_color_hover;
@@ -1455,6 +1501,8 @@ $c_base_border_width: 1px;
 
     label {
       color: $c_base_text;
+      display: flex;
+      flex-direction:column;
     }
     li {
       list-style: none;
@@ -1503,5 +1551,4 @@ $c_base_border_width: 1px;
     }
   }
 }
-
 </style>

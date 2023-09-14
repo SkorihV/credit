@@ -1,6 +1,7 @@
 <script setup>
 
-import {ref, computed, watch} from "vue";
+import {ref, computed, watch, watchEffect} from "vue";
+import {useEventListener} from "@/composables/useEventsListener";
 
 const props = defineProps({
   tableData: {
@@ -26,6 +27,9 @@ const props = defineProps({
 })
 
 const showTable = ref(false)
+const isAlternativeTable = ref(false)
+const alternativeTables = ref(new Map())
+const isMobile = ref(false)
 
 const isCaption = computed(() => {
   return Boolean(props.otherLabels?.caption?.length)
@@ -54,10 +58,21 @@ const isExistDataTable = computed(() => {
   return Boolean(props.tableData?.length)
 })
 
+const alternativeTablesOpened = computed(() => {
+ return Array.from(alternativeTables.value).every(([_, value]) => value)
+})
+
+const isOpenedAccordion = computed(() => (id) => alternativeTables.value.get(id))
+
 watch(isExistDataTable, (newValue) => {
   if (!newValue) {
     showTable.value = false
   }
+})
+
+watchEffect(() => {
+  alternativeTables.value.clear()
+  props.tableData.map((item) => alternativeTables.value.set(item.id, false) )
 })
 
 function toggleOpened() {
@@ -68,12 +83,53 @@ function toggleOpened() {
   }
 }
 
+function toggleTable() {
+  isAlternativeTable.value = !isAlternativeTable.value
+}
+function toggleTableAll() {
+  let sing =  !alternativeTablesOpened.value
+  Array.from(alternativeTables.value).map(([key]) => {
+    alternativeTables.value.set(key,sing)
+  })
+}
+
+function getIsEarlyRepayment(id) {
+  return props.tableData.find(item => item.id === id )?.earlyRepayment > 0 && props.isEarlyRepayment
+}
+
+function toggleAlternativeTableOpened(id) {
+  if (alternativeTables.value.has(id)) {
+    alternativeTables.value.set(id, !getAlternativeTableState(id))
+  }
+}
+
+function getAlternativeTableState(id) {
+   return alternativeTables.value.get(id)
+}
+
+useEventListener(window, 'resize', defineIsMobile)
+useEventListener(window, 'DOMContentLoaded', defineIsMobile)
+
+function defineIsMobile() {
+  isMobile.value = document.body.offsetWidth <= 770
+}
+
+watch(isMobile, (newValue) => {
+  if (!newValue) {
+    isAlternativeTable.value = false
+  }
+})
+
 </script>
 
 <template>
-  <button class="credit__button" @click="toggleOpened">{{otherLabels?.btnToggleTable}}</button>
-  <div class="credit__data-wrapper">
-    <table class="credit__table credit__table_adaptive" v-if="showTable">
+  <div class="credit__button-wrapper">
+    <div class="credit__button" @click="toggleOpened">{{otherLabels?.btnToggleTable}}</div>
+    <div class="credit__button" @click="toggleTable" v-if="showTable && isMobile"><div class="credit__arrow">⇄</div></div>
+    <div class="credit__button" @click="toggleTableAll" v-if="showTable && isMobile && isAlternativeTable"><div class="credit__arrow">{{alternativeTablesOpened ? '⇈' : '⇊' }}</div></div>
+  </div>
+  <div class="credit__data-wrapper" v-if="showTable && !isAlternativeTable">
+    <table class="credit__table credit__table_adaptive">
       <caption class="credit__caption" v-if="isCaption">{{otherLabels?.caption}}</caption>
       <thead class="credit__thead">
         <tr class="credit__tr">
@@ -87,11 +143,13 @@ function toggleOpened() {
         </tr>
       </thead>
       <tbody class="credit__tbody">
-      <tr class="credit__tr" :class="{'credit__tr-repayment':ceil.earlyRepayment > 0}" v-for="(ceil, idx) in tableData" :key="idx">
-        <template v-if="isEarlyRepayment && ceil.earlyRepayment > 0">
+      <tr class="credit__tr" :class="{'credit__tr-repayment':getIsEarlyRepayment(ceil.id)}" v-for="(ceil) in tableData" :key="ceil.id">
+        <template v-if="getIsEarlyRepayment(ceil.id)">
           <td class="credit__td">{{ceil.id}}</td>
           <td class="credit__td" v-if="isDate">{{ceil.date}}</td>
-          <td class="credit__td credit__td-repayment" colspan="3" v-if="isEarlyRepayment">{{otherLabels?.repayment}} : {{ceil.earlyRepayment.toLocaleString()}}</td>
+          <td class="credit__td" v-if="isPay">-</td>
+          <td class="credit__td" v-if="isPercent">-</td>
+          <td class="credit__td" v-if="isMainDebt">-</td>
           <td class="credit__td" v-if="isBalance">{{ceil.balance.toLocaleString()}}</td>
           <td class="credit__td" v-if="isEarlyRepayment">{{ceil.earlyRepayment.toLocaleString()}}</td>
         </template>
@@ -104,7 +162,6 @@ function toggleOpened() {
           <td class="credit__td" v-if="isBalance">{{ceil.balance.toLocaleString()}}</td>
           <td class="credit__td" v-if="isEarlyRepayment">-</td>
         </template>
-
       </tr>
       <tr class="credit__tr credit__tr_last">
         <td class="credit__td">∑</td>
@@ -117,5 +174,73 @@ function toggleOpened() {
       </tr>
       </tbody>
     </table>
+  </div>
+
+  <div class="credit__data-wrapper" v-if="showTable && isMobile && isAlternativeTable" >
+    <table class="credit__table credit__table_alternative" v-for="(ceil) in tableData" :key="ceil.id">
+      <caption class="credit__caption" v-if="isDate">
+        <div class="credit__caption-wrapper">
+          <div>№ {{ceil.id}} : {{ otherLabels?.date }} : {{ceil.date}}</div>
+          <div class="credit__caption-early-repayment" v-if="getIsEarlyRepayment(ceil.id)">{{otherLabels?.repayment}}</div>
+          <div :class="['credit__button-toggle-accordion', isOpenedAccordion(ceil.id) ? 'isOpen' : 'isClose']" @click="toggleAlternativeTableOpened(ceil.id)">
+            <div class="credit__arrow">{{isOpenedAccordion(ceil.id) ? '⇑' : '⇓' }}</div>
+          </div>
+        </div>
+      </caption>
+      <tbody class="credit__tbody" v-if="isOpenedAccordion(ceil.id)">
+        <tr class="credit__tr" v-if="isPay && !getIsEarlyRepayment(ceil.id)">
+          <td class="credit__td">{{ otherLabels?.pay }}</td>
+          <td class="credit__td">{{ceil.pay?.toLocaleString()}}</td>
+        </tr>
+
+        <tr class="credit__tr" v-if="isPercent && !getIsEarlyRepayment(ceil.id)">
+          <td class="credit__td">{{ otherLabels?.percent }}</td>
+          <td class="credit__td">{{ceil.percent?.toLocaleString()}}</td>
+        </tr>
+
+        <tr class="credit__tr" v-if="isMainDebt && !getIsEarlyRepayment(ceil.id)">
+          <td class="credit__td">{{ otherLabels?.mainDebt }}</td>
+          <td class="credit__td">{{ceil.mainDebt?.toLocaleString()}}</td>
+        </tr>
+
+        <tr class="credit__tr" v-if="isEarlyRepayment && getIsEarlyRepayment(ceil.id)">
+          <td class="credit__td">{{ otherLabels?.repayment }}</td>
+          <td class="credit__td">{{ceil.earlyRepayment?.toLocaleString()}}</td>
+        </tr>
+
+        <tr class="credit__tr" v-if="isBalance">
+          <td class="credit__td">{{ otherLabels?.balance }}</td>
+          <td class="credit__td">{{ceil.balance?.toLocaleString()}}</td>
+        </tr>
+
+
+      </tbody>
+    </table>
+    <table class="credit__table credit__table_alternative">
+      <caption class="credit__caption">∑</caption>
+      <tbody class="credit__tbody">
+
+      <tr class="credit__tr" v-if="isPay">
+        <td class="credit__td">{{ otherLabels?.pay }}</td>
+        <td class="credit__td">{{totalData.pay.toLocaleString()}}</td>
+      </tr>
+
+      <tr class="credit__tr" v-if="isPercent">
+        <td class="credit__td">{{ otherLabels?.percent }}</td>
+        <td class="credit__td">{{totalData.percent.toLocaleString()}}</td>
+      </tr>
+
+      <tr class="credit__tr" v-if="isEarlyRepayment && totalData.earlyRepayment">
+        <td class="credit__td">{{ otherLabels?.repayment }}</td>
+        <td class="credit__td">{{totalData?.earlyRepayment}}</td>
+      </tr>
+
+      <tr class="credit__tr" v-if="isMainDebt">
+        <td class="credit__td">{{ otherLabels?.mainDebt }}</td>
+        <td class="credit__td">{{totalData.mainDebt.toLocaleString()}}</td>
+      </tr>
+      </tbody>
+    </table>
+
   </div>
 </template>

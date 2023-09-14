@@ -19,6 +19,10 @@ const props = defineProps({
     type: String,
     default: "",
   },
+  classes: {
+    type: String,
+    default: ''
+  }
 });
 
 const selectedValueInRadio = ref(0);
@@ -53,7 +57,7 @@ function changeValue(eventType = "click") {
 </script>
 
 <template>
-  <div class="calc__wrapper-group-data">
+  <div class="calc__wrapper-group-data" :class="classes">
       <div class="credit__label-text" v-if="isExistLabel">
         {{ label }}
       </div>

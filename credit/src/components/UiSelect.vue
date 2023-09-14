@@ -30,7 +30,6 @@ const maxWidthSelectList = ref(null);
 const optionList = ref(null);
 const changeElement = ref(null);
 const parentRef = ref(null);
-const selectRef = ref(null);
 
 const isExistLabel = computed(() => {
   return Boolean(props.label?.toString().length);
@@ -110,7 +109,7 @@ function updatedWidthSelect() {
 }
 
 function clickClose(e) {
-  if (!selectRef?.value?.contains(e.target)) {
+  if (!parentRef?.value?.contains(e.target)) {
     close();
   }
 }
@@ -136,53 +135,47 @@ onMounted(() => {
 
 <template>
   <div
-    class="calc__wrapper-group-data"
-    :class="classes"
+    class="calc__wrapper-group-data calc__select-wrapper"
+    :class="[classes, {open: isOpen }]"
     ref="parentRef"
   >
-    <div
-      class="calc__select-wrapper"
-      :class="{open: isOpen }"
-      ref="selectRef"
-    >
-      <div class="credit__label-text" v-if="isExistLabel">
-        {{ label }}
-      </div>
-      <div class="calc__select-wrapper-right-side">
+    <div class="credit__label-text" v-if="isExistLabel">
+      {{ label }}
+    </div>
+    <div class="calc__select-wrapper-right-side">
+      <div
+        class="calc__select-change-wrapper"
+        ref="changeElement"
+        :style="[maxWidthForChangeElement]"
+      >
         <div
-          class="calc__select-change-wrapper"
-          ref="changeElement"
-          :style="[maxWidthForChangeElement]"
+          v-if="currentOption"
+          class="calc__select-change-item"
+          @click="toggleOpenClose"
         >
-          <div
-            v-if="currentOption"
-            class="calc__select-change-item"
-            @click="toggleOpenClose"
-          >
-            {{ currentOption.selectLabel }}
-            <div class="calc__select-arrow" v-if="isShowArrow"></div>
-          </div>
-          <div
-            class="calc__select-option-wrapper"
-            :style="[maxWidthForOptionList]"
-            ref="optionList"
-            v-show="isOpen"
-          >
-            <div class="calc__select-option-list">
-              <template
-                v-for="(option, idx) in selectData"
-                :key="idx"
+          {{ currentOption.selectLabel }}
+          <div class="calc__select-arrow" v-if="isShowArrow"></div>
+        </div>
+        <div
+          class="calc__select-option-wrapper"
+          :style="[maxWidthForOptionList]"
+          ref="optionList"
+          v-show="isOpen"
+        >
+          <div class="calc__select-option-list">
+            <template
+              v-for="(option, idx) in selectData"
+              :key="idx"
+            >
+              <div
+                class="calc__select-option-item"
+                @click="changeSelect(option, idx)"
               >
-                <div
-                  class="calc__select-option-item"
-                  @click="changeSelect(option, idx)"
-                >
-                    <div class="calc__select-option-item-text">
-                      {{ option.selectLabel }}
-                    </div>
-                </div>
-              </template>
-            </div>
+                  <div class="calc__select-option-item-text">
+                    {{ option.selectLabel }}
+                  </div>
+              </div>
+            </template>
           </div>
         </div>
       </div>
